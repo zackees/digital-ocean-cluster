@@ -3,44 +3,6 @@ from pathlib import Path
 from appdirs import user_cache_dir
 from download import download
 
-# https://github.com/digitalocean/doctl/releases/tag/v1.120.2
-
-# doctl-1.120.2-checksums.sha256
-# 881 Bytes
-# 3 hours ago
-# doctl-1.120.2-darwin-amd64.tar.gz
-# 15.8 MB
-# 3 hours ago
-# doctl-1.120.2-darwin-arm64.tar.gz
-# 15 MB
-# 3 hours ago
-# doctl-1.120.2-linux-386.tar.gz
-# 14.8 MB
-# 3 hours ago
-# doctl-1.120.2-linux-amd64.tar.gz
-# 15.8 MB
-# 3 hours ago
-# doctl-1.120.2-linux-arm64.tar.gz
-# 14.7 MB
-# 3 hours ago
-# doctl-1.120.2-source.tar.gz
-# 7.79 MB
-# 3 hours ago
-# doctl-1.120.2-windows-386.zip
-# 15.3 MB
-# 3 hours ago
-# doctl-1.120.2-windows-amd64.zip
-# 16.2 MB
-# 3 hours ago
-# doctl-1.120.2-windows-arm64.zip
-# 15 MB
-# 3 hours ago
-# Source code
-# (zip)
-# 3 hours ago
-# Source code
-# (tar.gz)
-
 
 def download_doctl(version="1.120.2") -> Path:
     import platform

@@ -97,13 +97,9 @@ class DropletCluster:
     def copy_text_to(
         self, text: str, remote_path: Path
     ) -> dict[Droplet, subprocess.CompletedProcess]:
-        # with NamedTemporaryFile("w") as f:
-        #    f.write(text)
-        #    f.flush()
-        #    return self.copy_to(Path(f.name), remote_path)
         with TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir) / "tmp.txt"
-            with open(tmp, "w") as f:
+            with open(tmp, "w", newline="\n") as f:
                 f.write(text)
             out = self.copy_to(tmp, remote_path)
             # time.sleep(1)  # Give time for the file handle to expire.

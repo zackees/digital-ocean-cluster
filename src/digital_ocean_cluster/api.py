@@ -4,6 +4,7 @@ import time
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 _TIME_DELETE_BEFORE_GONE = 10
@@ -210,6 +211,19 @@ class Droplet:
         if cp.returncode != 0:
             warnings.warn(f"Error copying file: {cp.stderr}")
         return cp
+
+    def copy_text_to(self, text: str, remote_path: Path) -> subprocess.CompletedProcess:
+        with TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir) / "tmp.txt"
+            with open(tmp, "w", newline="\n") as f:
+                f.write(text)
+            out = self.copy_to_remote(tmp, remote_path)
+            return out
+
+    def copy_text_from(self, remote_path: Path) -> subprocess.CompletedProcess:
+        cmd = "cat " + remote_path.as_posix()
+        results = self.ssh_exec(cmd)
+        return results
 
     def delete(self) -> Exception | None:
         try:

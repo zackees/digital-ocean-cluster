@@ -9,6 +9,10 @@ A well tested library for managing a fleet of droplets.
 [![Win_Tests](../../actions/workflows/push_win.yml/badge.svg)](../../actions/workflows/push_win.yml)
 
 
+# About
+
+This library concurrent creates and runs digital ocean droplets throug the doctl command line interface.
+
 To develop software, run `. ./activate`
 
 # Windows
@@ -21,7 +25,8 @@ Run `./lint.sh` to find linting errors using `pylint`, `flake8` and `mypy`.
 
 # Pre-requesits
 
-You will need to have an ssh key registered with digital ocean. This key must also be in your ~/.ssh folder.
+  * You will need to have an ssh key registered with digital ocean. This key must also be in your ~/.ssh folder.
+  * You will need to have the doctl binary installed in your path.
 
 TODO: Make a more minimal example
 

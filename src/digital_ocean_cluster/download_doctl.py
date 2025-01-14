@@ -1,10 +1,23 @@
+import os
 from pathlib import Path
 
 from appdirs import user_cache_dir
 from download import download
+from filelock import FileLock
+
+_VERSION = os.environ.get("DOCTL_VERSION", "1.120.2")
 
 
-def download_doctl(version="1.120.2") -> Path:
+def _lock_file() -> FileLock:
+    cache_dir = Path(user_cache_dir("doctl"))
+    cache_dir.mkdir(exist_ok=True, parents=True)
+    return FileLock(cache_dir / "doctl.lock")
+
+
+_LOCK = _lock_file()
+
+
+def download_doctl(version=_VERSION) -> Path:
     import platform
     import shutil
     import tarfile
@@ -37,40 +50,41 @@ def download_doctl(version="1.120.2") -> Path:
 
     url = f"{base_url}/{filename}"
 
-    # Use user_cache_dir for downloads and binary storage
-    cache_dir = Path(user_cache_dir("doctl"))
-    cache_dir.mkdir(exist_ok=True, parents=True)
+    with _LOCK:
+        # Use user_cache_dir for downloads and binary storage
+        cache_dir = Path(user_cache_dir("doctl"))
+        cache_dir.mkdir(exist_ok=True, parents=True)
 
-    binary_name = "doctl.exe" if system == "windows" else "doctl"
-    dest = cache_dir / f"doctl-{version}{'.exe' if system == 'windows' else ''}"
-    if dest.exists():
+        binary_name = "doctl.exe" if system == "windows" else "doctl"
+        dest = cache_dir / f"doctl-{version}{'.exe' if system == 'windows' else ''}"
+        if dest.exists():
+            return dest
+
+        # Download the file
+        downloaded_file = cache_dir / filename
+        download(url, str(downloaded_file), replace=True)
+
+        # Extract the binary
+        if system == "windows":
+            with zipfile.ZipFile(downloaded_file, "r") as zip_ref:
+                zip_ref.extractall(cache_dir)
+            binary_name = "doctl.exe"
+        else:
+            with tarfile.open(downloaded_file, "r:gz") as tar_ref:
+                tar_ref.extractall(cache_dir)
+            binary_name = "doctl"
+
+        # Move binary to final location in cache directory
+        source = cache_dir / binary_name
+        dest = cache_dir / f"doctl-{version}{'.exe' if system == 'windows' else ''}"
+
+        shutil.move(str(source), str(dest))
+
+        # Make binary executable on Unix-like systems
+        if system != "windows":
+            dest.chmod(0o755)
+
+        # Clean up downloaded archive
+        downloaded_file.unlink()
+
         return dest
-
-    # Download the file
-    downloaded_file = cache_dir / filename
-    download(url, str(downloaded_file), replace=True)
-
-    # Extract the binary
-    if system == "windows":
-        with zipfile.ZipFile(downloaded_file, "r") as zip_ref:
-            zip_ref.extractall(cache_dir)
-        binary_name = "doctl.exe"
-    else:
-        with tarfile.open(downloaded_file, "r:gz") as tar_ref:
-            tar_ref.extractall(cache_dir)
-        binary_name = "doctl"
-
-    # Move binary to final location in cache directory
-    source = cache_dir / binary_name
-    dest = cache_dir / f"doctl-{version}{'.exe' if system == 'windows' else ''}"
-
-    shutil.move(str(source), str(dest))
-
-    # Make binary executable on Unix-like systems
-    if system != "windows":
-        dest.chmod(0o755)
-
-    # Clean up downloaded archive
-    downloaded_file.unlink()
-
-    return dest

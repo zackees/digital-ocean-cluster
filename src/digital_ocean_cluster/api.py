@@ -7,6 +7,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
+from digital_ocean_cluster.ensure_doctl import ensure_doctl
+
 _TIME_DELETE_BEFORE_GONE = 10
 SLEEP_TIME_BEFORE_SSH = 10
 
@@ -110,6 +112,7 @@ def get_private_key() -> str:
 
 class Droplet:
     def __init__(self, data: Any) -> None:
+        ensure_doctl()
         self.id = data["id"]
         self.name = data["name"]
         self.data = data
@@ -226,6 +229,7 @@ class Droplet:
         return results
 
     def delete(self) -> Exception | None:
+
         try:
             print(f"Deleting droplet: {self.name}")
             # get_digital_ocean().compute.droplet.delete(str(self.id))
@@ -233,6 +237,11 @@ class Droplet:
             cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
             if cp.returncode != 0:
                 warnings.warn(f"Error deleting droplet: {cp.stderr}")
+                # print path to doctl
+                import os
+
+                env_paths = Path(os.environ["PATH"]).parts
+                warnings.warn(f"PATH: {env_paths}")
                 return None
         except Exception as e:
             warnings.warn(f"Error deleting droplet: {e}")
@@ -257,6 +266,7 @@ class DropletManager:
 
     @staticmethod
     def is_authenticated() -> Authentication | None:
+        ensure_doctl()
         cmd_str = "doctl account get --output=json --interactive=false"
         cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
         if cp.returncode != 0:
@@ -267,6 +277,7 @@ class DropletManager:
 
     @staticmethod
     def list_machines() -> list[str]:
+        ensure_doctl()
         cmd_str = (
             "doctl compute image list-distribution --output json --interactive=false"
         )
@@ -278,6 +289,7 @@ class DropletManager:
 
     @staticmethod
     def list_droplets() -> list[Droplet]:
+        ensure_doctl()
         cmd_str = "doctl compute droplet list --output json --interactive=false"
         cp_most = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
         if cp_most.returncode != 0:
@@ -288,6 +300,7 @@ class DropletManager:
 
     @staticmethod
     def list_ssh_keys() -> list[SSHKey]:
+        ensure_doctl()
         cmd_str = "doctl compute ssh-key list --interactive=false --output json"
         cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
         if cp.returncode != 0:
@@ -307,6 +320,7 @@ class DropletManager:
         region="nyc1",
         check=True,
     ) -> Droplet | Exception:
+        ensure_doctl()
         size = size or "s-2vcpu-2gb"
         assert (
             size in MACHINE_SIZES
@@ -384,6 +398,7 @@ class DropletManager:
     def find_droplets(
         name: str | None = None, tags: list[str] | None = None
     ) -> list[Droplet]:
+        ensure_doctl()
         if name is not None:
             name = name.replace("_", "-")
         droplets = DropletManager.list_droplets()

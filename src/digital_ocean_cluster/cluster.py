@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable
 
 from digital_ocean_cluster.api import Droplet, DropletManager
+from digital_ocean_cluster.ensure_doctl import ensure_doctl
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=64)
 
@@ -86,6 +87,7 @@ class DropletCluster:
     def copy_from(
         self, local_path: Path, remote_path: Path
     ) -> dict[Droplet, subprocess.CompletedProcess]:
+        ensure_doctl()
         args = [
             DropletCopyArgs(
                 droplet=droplet, local_path=local_path, remote_path=remote_path
@@ -97,6 +99,7 @@ class DropletCluster:
     def copy_text_to(
         self, text: str, remote_path: Path
     ) -> dict[Droplet, subprocess.CompletedProcess]:
+        ensure_doctl()
         with TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir) / "tmp.txt"
             with open(tmp, "w", newline="\n") as f:
@@ -106,6 +109,7 @@ class DropletCluster:
             return out
 
     def copy_text_from(self, remote_path: Path) -> dict[Droplet, str | Exception]:
+        ensure_doctl()
         cmd = "cat " + remote_path.as_posix()
         results = self.run_cmd(cmd)
         out: dict[Droplet, str | Exception] = {}
@@ -121,11 +125,13 @@ class DigitalOceanCluster:
 
     @staticmethod
     def find_cluster(tags: list[str]) -> DropletCluster:
+        ensure_doctl()
         droplets = DropletManager.find_droplets(tags=tags)
         return DropletCluster(droplets=droplets, failed_droplets={})
 
     @staticmethod
     def delete_cluster(tags: list[str] | DropletCluster) -> list[Droplet]:
+        ensure_doctl()
         if isinstance(tags, list):
             droplets = DropletManager.find_droplets(tags=tags)
         else:
@@ -157,6 +163,7 @@ class DigitalOceanCluster:
     def async_create_droplets(
         args: list[DropletCreationArgs],
     ) -> dict[str, Future[Droplet | Exception]]:
+        ensure_doctl()
         # check that the names are unique
         names = [arg.name for arg in args]
         if len(names) != len(set(names)):
@@ -209,6 +216,7 @@ class DigitalOceanCluster:
     def create_droplets(
         args: list[DropletCreationArgs],
     ) -> DropletCluster:
+        ensure_doctl()
         futures: dict[str, Future[Droplet | Exception]] = (
             DigitalOceanCluster.async_create_droplets(args)
         )
@@ -229,6 +237,7 @@ class DigitalOceanCluster:
     def async_run_cluster_cmd(
         droplets: list[Droplet], cmd: str
     ) -> dict[Droplet, Future[subprocess.CompletedProcess]]:
+        ensure_doctl()
         # futures: list[Future[subprocess.CompletedProcess]] = []
         droplet: Droplet
         out: dict[Droplet, Future[subprocess.CompletedProcess]] = {}
@@ -247,6 +256,7 @@ class DigitalOceanCluster:
     def run_cluster_cmd(
         droplets: list[Droplet], cmd: str
     ) -> dict[Droplet, subprocess.CompletedProcess]:
+        ensure_doctl()
         futures: dict[Droplet, Future[subprocess.CompletedProcess]] = (
             DigitalOceanCluster.async_run_cluster_cmd(droplets, cmd)
         )
@@ -259,6 +269,7 @@ class DigitalOceanCluster:
     def async_run_cluster_function(
         droplets: list[Droplet], function: Callable[[Droplet], Any]
     ) -> dict[Droplet, Any]:
+        ensure_doctl()
         futures: dict[Droplet, Future[Any]] = {}
         droplet: Droplet
         for droplet in droplets:
@@ -277,6 +288,7 @@ class DigitalOceanCluster:
     def run_cluster_function(
         droplets: list[Droplet], function: Callable[[Droplet], Any]
     ) -> dict[Droplet, Any | Exception]:
+        ensure_doctl()
         futures: dict[Droplet, Future[Any]] = (
             DigitalOceanCluster.async_run_cluster_function(droplets, function)
         )
@@ -296,6 +308,7 @@ class DigitalOceanCluster:
         remote_path: Path,
         chmod: str | None = None,
     ) -> dict[Droplet, Future[subprocess.CompletedProcess]]:
+        ensure_doctl()
         futures: dict[Droplet, Future[subprocess.CompletedProcess]] = {}
         droplet: Droplet
         for droplet in droplets:
@@ -319,6 +332,7 @@ class DigitalOceanCluster:
         remote_path: Path,
         chmod: str | None = None,
     ) -> dict[Droplet, subprocess.CompletedProcess]:
+        ensure_doctl()
         futures: dict[Droplet, Future[subprocess.CompletedProcess]] = (
             DigitalOceanCluster.async_run_cluster_copy_to(
                 droplets, local_path, remote_path, chmod=chmod
@@ -333,6 +347,7 @@ class DigitalOceanCluster:
     def async_run_cluster_copy_from(
         args: list[DropletCopyArgs],
     ) -> dict[Droplet, Future[subprocess.CompletedProcess]]:
+        ensure_doctl()
         out: dict[Droplet, Future[subprocess.CompletedProcess]] = {}
         arg: DropletCopyArgs
         for arg in args:
@@ -351,6 +366,7 @@ class DigitalOceanCluster:
     def run_cluster_copy_from(
         args: list[DropletCopyArgs],
     ) -> dict[Droplet, subprocess.CompletedProcess]:
+        ensure_doctl()
         futures: dict[Droplet, Future[subprocess.CompletedProcess]] = (
             DigitalOceanCluster.async_run_cluster_copy_from(args)
         )

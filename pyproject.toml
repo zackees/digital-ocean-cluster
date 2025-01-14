@@ -3,7 +3,7 @@ requires = ["setuptools>=65.5.1", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "digital_ocean_cluster"
+name = "digital-ocean-cluster"
 readme = "README.md"
 description = "digital ocean cluster management through droplets"
 requires-python = ">=3.7"
@@ -14,7 +14,7 @@ dependencies = [
 
 ]
 # Change this with the version number bump.
-version = "1.0.0"
+version = "1.0.1"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

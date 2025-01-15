@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from digital_ocean_cluster.api import Droplet, DropletManager
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
+from digital_ocean_cluster.exception import DropletException
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=64)
 
@@ -60,16 +61,6 @@ class DropletCopyArgs:
     droplet: Droplet
     local_path: Path
     remote_path: Path
-
-
-class DropletException(Exception):
-    def __init__(self, message: str, droplet: str) -> None:
-        self.message = message
-        self.droplet = droplet
-        super().__init__(message)
-
-    def __str__(self) -> str:
-        return f"DropletException(droplet={self.droplet}, message={self.message})"
 
 
 @dataclass

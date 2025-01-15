@@ -5,8 +5,8 @@ from .cluster import (
     DropletCmdArgs,
     DropletCopyArgs,
     DropletCreationArgs,
-    DropletException,
 )
+from .exception import DropletException
 
 __all__ = [
     "Authentication",

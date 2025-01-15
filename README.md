@@ -11,9 +11,9 @@ A well tested library for managing a fleet of droplets.
 
 # About
 
-This library concurrent creates and runs digital ocean droplets through the doctl command line interface.
+This library concurrent creates and runs digital ocean droplets through the doctl command line interface. This api allows massive concurrency running each action on a seperate thread.
 
-The amount of implemented features for doctl is very few, but just enough to bring up a Droplet cloud, install dependencies like a dockerfile, and execute commands on the cluster. With few dependencies on DigitalOceans , this library can easily be re-written
+The amount of implemented features for doctl is very few, but just enough to bring up a Droplet cloud, install dependencies, and execute commands on the cluster.
 
 To develop software, run `. ./activate`
 
@@ -35,105 +35,85 @@ TODO: Make a more minimal example
 # Example
 
 ```python
+"""
+Unit test file.
+"""
+
+import os
+import subprocess
+import unittest
 from pathlib import Path
-from threading import Lock
 
-from digital_ocean_cluster import DigitalOceanCluster, Droplet, DropletCreationArgs
+from digital_ocean_cluster import (
+    DigitalOceanCluster,
+    Droplet,
+    DropletCluster,
+    DropletCreationArgs,
+)
 
-from mike_tx.build_whl import build_wheel
-from mike_tx.paths import PROJECT_ROOT
+# os.environ["home"] = "/home/niteris"
 
-TAGS = ["mike-adams", "audit", "progress"]
+IS_GITHUB = os.environ.get("GITHUB_ACTIONS", False)
 
-CLUSTER_SIZE = 1
+TAGS = ["test", "cluster"]
 
-
-INSTALL_CMDS = [
-    "apt update -y",
-    "apt install -y python3 python3-pip python3-venv rclone nodejs npm magic-wormhole",
-    "npm install -g pm2 -y",
-]
+CLUSTER_SIZE = 4
 
 
-PRINT_LOCK = Lock()
+class DigitalOceanClusterTester(unittest.TestCase):
+    """Main tester class."""
 
-_LOG_FILE = PROJECT_ROOT / "logs" / "do_ourprogress.log"
-_LOG_FILE.parent.mkdir(exist_ok=True, parents=True)
-# erase log file
-if _LOG_FILE.exists():
-    _LOG_FILE.write_text("", encoding="utf-8")
+    @unittest.skipIf(IS_GITHUB, "Skipping test for GitHub Actions")
+    def test_create_droplets(self) -> None:
+        """Test command line interface (CLI)."""
+        # first delete the previous cluster
+        # create a cluster of 4 machines
+        # Deleting the cluster
+        deleted: list[Droplet] = DigitalOceanCluster.delete_cluster(TAGS)
+        print(f"Deleted: {[d.name for d in deleted]}")
 
+        creation_args: list[DropletCreationArgs] = [
+            DropletCreationArgs(name=f"test-droplet-creation-{i}", tags=TAGS)
+            for i in range(CLUSTER_SIZE)
+        ]
 
-def locked_print(*args, **kwargs):
-    # open log file
-    with PRINT_LOCK:
-        try:
-            with open(str(_LOG_FILE), "a", encoding="utf-8") as f:
-                print(*args, kwargs, file=f)
-            print(*args, **kwargs)
+        print(f"Creating droplets: {creation_args}")
+        cluster: DropletCluster = DigitalOceanCluster.create_droplets(creation_args)
+        self.assertEqual(len(cluster.droplets), CLUSTER_SIZE)
+        self.assertEqual(len(cluster.failed_droplets), 0)
 
-        except UnicodeDecodeError as ue:
-            print(f"Error in locked_print: {ue}")
+        # now run ls on all of them
+        cmd = "pwd"
+        result: dict[Droplet, subprocess.CompletedProcess] = cluster.run_cmd(cmd)
+        for _, cp in result.items():
+            self.assertIn(
+                "/root",
+                cp.stdout,
+                f"Error: {cp.returncode}\n\nstderr:\n{cp.stderr}\n\nstdout:\n{cp.stdout}",
+            )
 
+        content: str = "the quick brown fox jumps over the lazy dog"
+        remote_path = Path("/root/test.txt")
 
-def install(droplet: Droplet, ours: bool) -> None:
-    for cmd in INSTALL_CMDS:
-        stdout = droplet.ssh_exec(cmd).stdout
-        locked_print("stdout:", stdout)
-    locked_print("Completed installation.")
+        # now copy a file to all of them
+        cluster.copy_text_to(content, remote_path)
 
-    locked_print("copying files")
-    SRC = PROJECT_ROOT / "dist"
-    whl = list(SRC.glob("*.whl"))[0]
-    SRC = SRC / whl.name
-    DST = Path("/root/dist/" + whl.name)
-    droplet.copy_to_remote(SRC, DST)
-    # now install the file
-    stdout = droplet.ssh_exec(
-        f"pip install {DST.as_posix()} --break-system-packages"
-    ).stdout
-    locked_print("stdout:", stdout)
-    if ours:
-        cmd_str = "pm2 start 'mike-tx size --ours' && pm2 save && pm2 startup"
-    else:
-        cmd_str = "pm2 start 'mike-tx size --theirs' && pm2 save && pm2 startup"
-    cp = droplet.ssh_exec(cmd_str)
-    if cp.returncode != 0:
-        locked_print(f"Error running pm2: {cp.stderr}")
+        # now get the text back
+        results: dict[Droplet, str | Exception] = cluster.copy_text_from(remote_path)
+        for droplet, text in results.items():
+            if isinstance(text, Exception):
+                print(f"Error: {text}")
+                self.fail(f"Droplet {droplet.name} failed\nError: {text}")
+            else:
+                print(f"Text: {text}")
 
-
-def main() -> None:
-    build_wheel()  # build the wheel so that we get a fresh copy
-    # if DigitalOceanCluster.find_cluster(TAGS):
-    #     print("Cluster found, no need to create.")
-    #     return
-    droplets = DigitalOceanCluster.delete_cluster(TAGS)
-    if droplets:
-        print(f"Deleted: {[d.name for d in droplets]}")
-
-    def install_ours(droplet: Droplet) -> None:
-        install(droplet, True)
-
-    def install_theirs(droplet: Droplet) -> None:
-        install(droplet, False)
-
-    args1 = DropletCreationArgs(
-        name="progress-ours", tags=TAGS + ["ours"], install=install_ours
-    )
-    args2 = DropletCreationArgs(
-        name="progress-theirs", tags=TAGS + ["theirs"], install=install_theirs
-    )
-
-    cluster = DigitalOceanCluster.create_droplets(
-        [args1, args2],
-    )
-
-    assert len(cluster.failed_droplets) == 0, "Failed to create droplets"
-
-    print(f"Created cluster: {cluster}")
-    print("Completed installation.")
+        print("Deleting cluster")
+        # now delete the cluster
+        DigitalOceanCluster.delete_cluster(cluster)
+        print("Deleted cluster")
 
 
 if __name__ == "__main__":
-    main()
+    unittest.main()
+
 ```

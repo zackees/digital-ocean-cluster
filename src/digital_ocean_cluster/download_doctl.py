@@ -15,14 +15,20 @@ def _lock_file() -> FileLock:
 
 
 _LOCK = _lock_file()
+_DOCTL_PATH: Path | None = None
 
 
-def download_doctl(version=_VERSION) -> Path:
+def download_doctl() -> Path:
     import platform
     import shutil
     import tarfile
     import zipfile
     from pathlib import Path
+
+    global _DOCTL_PATH
+
+    if _DOCTL_PATH is not None:
+        return _DOCTL_PATH
 
     # Determine OS and architecture
     system = platform.system().lower()
@@ -40,13 +46,13 @@ def download_doctl(version=_VERSION) -> Path:
     arch = arch_map.get(machine, machine)
 
     # Construct base URL
-    base_url = f"https://github.com/digitalocean/doctl/releases/download/v{version}"
+    base_url = f"https://github.com/digitalocean/doctl/releases/download/v{_VERSION}"
 
     # Construct filename based on platform
     if system == "windows":
-        filename = f"doctl-{version}-windows-{arch}.zip"
+        filename = f"doctl-{_VERSION}-windows-{arch}.zip"
     else:
-        filename = f"doctl-{version}-{system}-{arch}.tar.gz"
+        filename = f"doctl-{_VERSION}-{system}-{arch}.tar.gz"
 
     url = f"{base_url}/{filename}"
 
@@ -56,7 +62,7 @@ def download_doctl(version=_VERSION) -> Path:
         cache_dir.mkdir(exist_ok=True, parents=True)
 
         binary_name = "doctl.exe" if system == "windows" else "doctl"
-        dest = cache_dir / f"doctl-{version}{'.exe' if system == 'windows' else ''}"
+        dest = cache_dir / f"doctl-{_VERSION}{'.exe' if system == 'windows' else ''}"
         if dest.exists():
             return dest
 
@@ -76,7 +82,7 @@ def download_doctl(version=_VERSION) -> Path:
 
         # Move binary to final location in cache directory
         source = cache_dir / binary_name
-        dest = cache_dir / f"doctl-{version}{'.exe' if system == 'windows' else ''}"
+        dest = cache_dir / f"doctl-{_VERSION}{'.exe' if system == 'windows' else ''}"
 
         shutil.move(str(source), str(dest))
 
@@ -86,5 +92,5 @@ def download_doctl(version=_VERSION) -> Path:
 
         # Clean up downloaded archive
         downloaded_file.unlink()
-
+        _DOCTL_PATH = dest
         return dest

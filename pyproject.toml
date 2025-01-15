@@ -13,7 +13,6 @@ classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
     "download",
     "appdirs",
-    "filelock",
     "wheel"
 
 ]

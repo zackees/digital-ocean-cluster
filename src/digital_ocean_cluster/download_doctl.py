@@ -1,21 +1,16 @@
 import os
 from pathlib import Path
+from threading import Lock
 
 from appdirs import user_cache_dir
 from download import download
-from filelock import FileLock
 
 _VERSION = os.environ.get("DOCTL_VERSION", "1.120.2")
 
 
-def _lock_file() -> FileLock:
-    cache_dir = Path(user_cache_dir("doctl"))
-    cache_dir.mkdir(exist_ok=True, parents=True)
-    return FileLock(cache_dir / "doctl.lock")
-
-
-_LOCK = _lock_file()
 _DOCTL_PATH: Path | None = None
+
+_LOCK = Lock()
 
 
 def download_doctl() -> Path:

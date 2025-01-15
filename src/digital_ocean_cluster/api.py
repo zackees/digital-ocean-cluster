@@ -216,12 +216,14 @@ class Droplet:
             warnings.warn(f"Error copying file: {cp.stderr}")
         return cp
 
-    def copy_text_to(self, text: str, remote_path: Path) -> subprocess.CompletedProcess:
+    def copy_text_to(
+        self, text: str, remote_path: Path, chmod: str | None = None
+    ) -> subprocess.CompletedProcess:
         with TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir) / "tmp.txt"
             with open(tmp, "w", newline="\n") as f:
                 f.write(text)
-            out = self.copy_to(tmp, remote_path)
+            out = self.copy_to(tmp, remote_path, chmod)
             return out
 
     def copy_text_from(self, remote_path: Path) -> subprocess.CompletedProcess:

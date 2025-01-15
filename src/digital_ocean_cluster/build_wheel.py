@@ -24,8 +24,12 @@ def build_wheel(setup_py: Path, dist_dir: Path, python: str | None = None) -> Pa
     project_root = setup_py.parent
     # python setup.py bdist_wheel
     old_wheels = _file_list_whl(dist_dir)
+    cmd_list = [python, "setup.py", "bdist_wheel", "--dist-dir", str(dist_dir)]
+    cmd_str = subprocess.list2cmdline(cmd_list)
+    dist_dir.mkdir(exist_ok=True, parents=True)
+    print(f"Running: {cmd_str}")
     subprocess.run(
-        [python, "setup.py", "bdist_wheel", "--bdist-dir", str(dist_dir)],
+        cmd_list,
         check=True,
         cwd=str(project_root),
     )

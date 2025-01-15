@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import time
 import warnings
@@ -165,7 +166,7 @@ class Droplet:
         )
         return cp
 
-    def copy_to_remote(
+    def copy_to(
         self, src: Path, dest: Path, chmod: str | None = None
     ) -> subprocess.CompletedProcess:
         assert src.exists(), f"Source file does not exist: {src}"
@@ -193,7 +194,7 @@ class Droplet:
             self.ssh_exec(f"chmod {chmod} {dest.as_posix()}")
         return cp
 
-    def copy_from_remote(
+    def copy_from(
         self, remote_path: Path, local_path: Path
     ) -> subprocess.CompletedProcess:
         key_path = get_private_key()
@@ -220,7 +221,7 @@ class Droplet:
             tmp = Path(tmpdir) / "tmp.txt"
             with open(tmp, "w", newline="\n") as f:
                 f.write(text)
-            out = self.copy_to_remote(tmp, remote_path)
+            out = self.copy_to(tmp, remote_path)
             return out
 
     def copy_text_from(self, remote_path: Path) -> subprocess.CompletedProcess:
@@ -229,7 +230,6 @@ class Droplet:
         return results
 
     def delete(self) -> Exception | None:
-
         try:
             print(f"Deleting droplet: {self.name}")
             # get_digital_ocean().compute.droplet.delete(str(self.id))
@@ -238,8 +238,6 @@ class Droplet:
             if cp.returncode != 0:
                 warnings.warn(f"Error deleting droplet: {cp.stderr}")
                 # print path to doctl
-                import os
-
                 env_paths = Path(os.environ["PATH"]).parts
                 warnings.warn(f"PATH: {env_paths}")
                 return None

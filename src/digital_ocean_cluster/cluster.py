@@ -329,7 +329,7 @@ class DigitalOceanCluster:
                 remote_path: Path = remote_path,
                 chmod: str | None = chmod,
             ) -> subprocess.CompletedProcess:
-                return droplet.copy_to_remote(local_path, remote_path, chmod)
+                return droplet.copy_to(local_path, remote_path, chmod)
 
             future = _EXECUTOR.submit(task)
             futures[droplet] = future
@@ -367,7 +367,7 @@ class DigitalOceanCluster:
                 local_path: Path = arg.local_path,
                 remote_path: Path = arg.remote_path,
             ) -> subprocess.CompletedProcess:
-                return droplet.copy_from_remote(local_path, remote_path)
+                return droplet.copy_from(local_path, remote_path)
 
             out[arg.droplet] = _EXECUTOR.submit(task)
         return out

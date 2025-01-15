@@ -30,9 +30,7 @@ class DropletCopyTester(unittest.TestCase):
         else:
             droplet = droplets[0]
         assert droplet is not None
-        stdout = droplet.copy_to_remote(
-            Path(TEST_FILE), Path("/root/pyproject.toml")
-        ).stdout
+        stdout = droplet.copy_to(Path(TEST_FILE), Path("/root/pyproject.toml")).stdout
         print("stdout:", stdout)
 
         # ssh -i ~/.ssh/my-key root@165.227.209.16 'ls'

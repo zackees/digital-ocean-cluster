@@ -13,6 +13,8 @@ A well tested library for managing a fleet of droplets.
 
 This library concurrent creates and runs digital ocean droplets through the doctl command line interface.
 
+The amount of implemented features for doctl is very few, but just enough to bring up a Droplet cloud, install dependencies like a dockerfile, and execute commands on the cluster. With few dependencies on DigitalOceans , this library can easily be re-written
+
 To develop software, run `. ./activate`
 
 # Windows

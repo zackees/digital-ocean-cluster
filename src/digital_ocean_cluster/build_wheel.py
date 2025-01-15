@@ -41,5 +41,7 @@ def build_wheel(setup_py: Path, dist_dir: Path, python: str | None = None) -> Pa
         )
     diff = set(new_wheels) - set(old_wheels)
     if len(diff) != 1:
-        raise ValueError(f"Expected one new wheel file, got {len(diff)}: {diff}")
+        # second course of action, look at the files and grab the one with the most recent timestamp
+        sorted_items = sorted(new_wheels, key=lambda x: x.stat().st_mtime, reverse=True)
+        return sorted_items[0]
     return diff.pop()

@@ -120,6 +120,9 @@ class DropletCluster:
                 out[droplet] = Exception(cp.stderr)
         return out
 
+    def delete(self) -> list[Droplet]:
+        return DigitalOceanCluster.delete_cluster(self)
+
     def __str__(self) -> str:
         droplet_names: list[str] = [d.name for d in self.droplets]
         failed_droplets: dict[str, Exception] = self.failed_droplets

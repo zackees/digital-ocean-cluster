@@ -5,8 +5,6 @@ from pathlib import Path
 HERE = Path(__file__).parent
 PROJECT_ROOT = HERE.parent.parent
 
-assert (PROJECT_ROOT / "pyproject.toml").exists()
-
 PYTHON_EXE = sys.executable
 
 

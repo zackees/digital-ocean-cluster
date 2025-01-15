@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "digital-ocean-cluster"
 readme = "README.md"
 description = "digital ocean cluster management through droplets"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 keywords = ["template-python-cmd"]
 license = { text = "BSD 3-Clause License" }
 classifiers = ["Programming Language :: Python :: 3"]
@@ -18,7 +18,7 @@ dependencies = [
 
 ]
 # Change this with the version number bump.
-version = "1.0.10"
+version = "1.0.11"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

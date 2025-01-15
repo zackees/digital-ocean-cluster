@@ -62,10 +62,20 @@ class DropletCopyArgs:
     remote_path: Path
 
 
+class DropletException(Exception):
+    def __init__(self, message: str, droplet: str) -> None:
+        self.message = message
+        self.droplet = droplet
+        super().__init__(message)
+
+    def __str__(self) -> str:
+        return f"DropletException(droplet={self.droplet}, message={self.message})"
+
+
 @dataclass
 class DropletCluster:
     droplets: list[Droplet]
-    failed_droplets: dict[str, Exception]
+    failed_droplets: dict[str, DropletException]
 
     # allow in if statements, return True if droplets are present
     def __bool__(self) -> bool:
@@ -108,16 +118,18 @@ class DropletCluster:
             # time.sleep(1)  # Give time for the file handle to expire.
             return out
 
-    def copy_text_from(self, remote_path: Path) -> dict[Droplet, str | Exception]:
+    def copy_text_from(
+        self, remote_path: Path
+    ) -> dict[Droplet, str | DropletException]:
         ensure_doctl()
         cmd = "cat " + remote_path.as_posix()
         results = self.run_cmd(cmd)
-        out: dict[Droplet, str | Exception] = {}
+        out: dict[Droplet, str | DropletException] = {}
         for droplet, cp in results.items():
             if cp.returncode == 0:
                 out[droplet] = cp.stdout
             else:
-                out[droplet] = Exception(cp.stderr)
+                out[droplet] = DropletException(cp.stderr, droplet.name)
         return out
 
     def delete(self) -> list[Droplet]:
@@ -125,7 +137,7 @@ class DropletCluster:
 
     def __str__(self) -> str:
         droplet_names: list[str] = [d.name for d in self.droplets]
-        failed_droplets: dict[str, Exception] = self.failed_droplets
+        failed_droplets: dict[str, DropletException] = self.failed_droplets
         if not failed_droplets:
             return f"DropletCluster(droplets={droplet_names})"
         return f"DropletCluster(droplets={droplet_names}, failed_droplets={self.failed_droplets})"
@@ -231,11 +243,11 @@ class DigitalOceanCluster:
             DigitalOceanCluster.async_create_droplets(args)
         )
         droplets: list[Droplet] = []
-        failed: dict[str, Exception] = {}
+        failed: dict[str, DropletException] = {}
         for name, future in futures.items():
             result = future.result()
             if isinstance(result, Exception):
-                failed[name] = result
+                failed[name] = DropletException(str(result), name)
             else:
                 droplet = result
                 assert isinstance(droplet, Droplet)
@@ -297,7 +309,7 @@ class DigitalOceanCluster:
     @staticmethod
     def run_cluster_function(
         droplets: list[Droplet], function: Callable[[Droplet], Any]
-    ) -> dict[Droplet, Any | Exception]:
+    ) -> dict[Droplet, Any | DropletException]:
         ensure_doctl()
         futures: dict[Droplet, Future[Any]] = (
             DigitalOceanCluster.async_run_cluster_function(droplets, function)
@@ -308,7 +320,7 @@ class DigitalOceanCluster:
                 result = future.result()
                 out[droplet] = result
             except Exception as e:
-                out[droplet] = e
+                out[droplet] = DropletException(str(e), droplet.name)
         return out
 
     @staticmethod

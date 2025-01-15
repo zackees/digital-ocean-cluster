@@ -5,6 +5,7 @@ from .cluster import (
     DropletCmdArgs,
     DropletCopyArgs,
     DropletCreationArgs,
+    DropletException,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "DropletCopyArgs",
     "DropletCluster",
     "DigitalOceanCluster",
+    "DropletException",
 ]

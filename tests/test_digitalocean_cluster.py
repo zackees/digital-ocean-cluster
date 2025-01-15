@@ -12,6 +12,7 @@ from digital_ocean_cluster import (
     Droplet,
     DropletCluster,
     DropletCreationArgs,
+    DropletException,
 )
 
 # os.environ["home"] = "/home/niteris"
@@ -71,9 +72,11 @@ class DigitalOceanClusterTester(unittest.TestCase):
         cluster.copy_text_to(content, remote_path)
 
         # now get the text back
-        results: dict[Droplet, str | Exception] = cluster.copy_text_from(remote_path)
+        results: dict[Droplet, str | DropletException] = cluster.copy_text_from(
+            remote_path
+        )
         for droplet, text in results.items():
-            if isinstance(text, Exception):
+            if isinstance(text, DropletException):
                 print(f"Error: {text}")
                 self.fail(f"Droplet {droplet.name} failed\nError: {text}")
             else:

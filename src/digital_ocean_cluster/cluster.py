@@ -120,7 +120,7 @@ class DropletCluster:
             if cp.returncode == 0:
                 out[droplet] = cp.stdout
             else:
-                out[droplet] = DropletException(cp.stderr, droplet.name)
+                out[droplet] = DropletException(cp.stderr)
         return out
 
     def delete(self) -> list[Droplet]:
@@ -238,7 +238,7 @@ class DigitalOceanCluster:
         for name, future in futures.items():
             result = future.result()
             if isinstance(result, Exception):
-                failed[name] = DropletException(str(result), name)
+                failed[name] = DropletException(str(result))
             else:
                 droplet = result
                 assert isinstance(droplet, Droplet)
@@ -311,7 +311,7 @@ class DigitalOceanCluster:
                 result = future.result()
                 out[droplet] = result
             except Exception as e:
-                out[droplet] = DropletException(str(e), droplet.name)
+                out[droplet] = DropletException(str(e))
         return out
 
     @staticmethod

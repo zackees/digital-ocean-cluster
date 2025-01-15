@@ -23,6 +23,13 @@ TAGS = ["test", "cluster"]
 CLUSTER_SIZE = 4
 
 
+def install(droplet: Droplet) -> None:
+    """Install a package."""
+    # droplet.run_cmd("apt-get update")
+    # droplet.run_cmd("apt-get install -y vim")
+    droplet.copy_text_to("echo 'Install Done!'", Path("/root/test.sh"))
+
+
 class DigitalOceanClusterTester(unittest.TestCase):
     """Main tester class."""
 
@@ -36,7 +43,9 @@ class DigitalOceanClusterTester(unittest.TestCase):
         print(f"Deleted: {[d.name for d in deleted]}")
 
         creation_args: list[DropletCreationArgs] = [
-            DropletCreationArgs(name=f"test-droplet-creation-{i}", tags=TAGS)
+            DropletCreationArgs(
+                name=f"test-droplet-creation-{i}", tags=TAGS, install=install
+            )
             for i in range(CLUSTER_SIZE)
         ]
 

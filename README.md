@@ -11,7 +11,7 @@ A well tested library for managing a fleet of droplets.
 
 # About
 
-This library concurrent creates and runs digital ocean droplets throug the doctl command line interface.
+This library concurrent creates and runs digital ocean droplets through the doctl command line interface.
 
 To develop software, run `. ./activate`
 

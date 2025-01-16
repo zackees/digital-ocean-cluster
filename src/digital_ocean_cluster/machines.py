@@ -3,6 +3,7 @@ from enum import Enum
 
 class ImageType(Enum):
     UBUNTU_24_10_X64 = "ubuntu-24-10-x64"
+    UBUNTU_20_04_X64 = "ubuntu-20-04-x64"
 
 
 class Region(Enum):

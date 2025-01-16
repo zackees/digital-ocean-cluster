@@ -12,8 +12,8 @@ from digital_ocean_cluster import (
     Droplet,
     DropletCluster,
     DropletCreationArgs,
-    DropletException,
 )
+from digital_ocean_cluster.types import DropletException
 
 # os.environ["home"] = "/home/niteris"
 
@@ -21,7 +21,7 @@ IS_GITHUB = os.environ.get("GITHUB_ACTIONS", False)
 
 TAGS = ["test", "cluster"]
 
-CLUSTER_SIZE = 4
+CLUSTER_SIZE = 1
 
 
 def install(droplet: Droplet) -> None:

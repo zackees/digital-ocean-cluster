@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from digital_ocean_cluster import Droplet, DropletManager
+from digital_ocean_cluster.cluster import DigitalOceanCluster
 
 # os.environ["home"] = "/home/niteris"
 
@@ -25,8 +26,7 @@ class DropletExecTester(unittest.TestCase):
 
     def test_ssh_exec_ls(self) -> None:
         """Test command line interface (CLI)."""
-        all_droplets = DropletManager.list_droplets()
-        print(f"All Droplets: {all_droplets}")
+        DigitalOceanCluster.delete_cluster(TAGS)
         existing_droplets = DropletManager.find_droplets("test-droplet-ssh")
         for d in existing_droplets:
             print(f"Deleting droplet: {d.name}")

@@ -1,7 +1,7 @@
 import subprocess
 import time
 import warnings
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -9,9 +9,8 @@ from typing import Any, Callable
 
 from digital_ocean_cluster.api import Droplet, DropletManager
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
-from digital_ocean_cluster.exception import DropletException
-
-_EXECUTOR = ThreadPoolExecutor(max_workers=64)
+from digital_ocean_cluster.machines import ImageType, MachineSize, Region
+from digital_ocean_cluster.types import THREAD_POOL, DropletException
 
 
 @dataclass
@@ -19,9 +18,9 @@ class DropletCreationArgs:
     name: str
     tags: list[str]
     ssh_key: str | None = None
-    size: str | None = None
-    image: str = "ubuntu-24-10-x64"
-    region: str = "nyc1"
+    size: MachineSize = MachineSize.S_2VCPU_2GB
+    image: ImageType = ImageType.UBUNTU_24_10_X64
+    region: Region = Region.NYC_1
     # Use a function that throws if there is a failure to execute.
     install: Callable[[Droplet], Any] | None = None
 
@@ -36,11 +35,11 @@ class DropletCreationArgs:
         args = [
             self.name,
             "--image",
-            self.image,
+            self.image.value,
             "--size",
-            self.size or "s-2vcpu-2gb",
+            self.size.value,
             "--region",
-            self.region,
+            self.region.value,
             "--wait",
         ]
         if self.tags is not None:
@@ -153,7 +152,7 @@ class DigitalOceanCluster:
         def _delete(droplet: Droplet) -> None:
             droplet.delete()
 
-        _EXECUTOR.map(_delete, droplets)
+        THREAD_POOL.map(_delete, droplets)
         droplets = [d for d in droplets]
         timeout = time.time() + 60
         while time.time() < timeout:
@@ -221,7 +220,7 @@ class DigitalOceanCluster:
             tmp.update({name: task})
         out: dict[str, Future[Droplet | Exception]] = {}
         for name, tsk in tmp.items():
-            future = _EXECUTOR.submit(tsk)
+            future = THREAD_POOL.submit(tsk)
             out[name] = future
         return out
 
@@ -261,7 +260,7 @@ class DigitalOceanCluster:
             ) -> subprocess.CompletedProcess:
                 return droplet.ssh_exec(cmd)
 
-            future = _EXECUTOR.submit(task)
+            future = THREAD_POOL.submit(task)
             out[droplet] = future
         return out
 
@@ -293,7 +292,7 @@ class DigitalOceanCluster:
             ) -> Any:
                 return function(droplet)
 
-            future = _EXECUTOR.submit(task)
+            future = THREAD_POOL.submit(task)
             futures[droplet] = future
         return futures
 
@@ -334,7 +333,7 @@ class DigitalOceanCluster:
             ) -> subprocess.CompletedProcess:
                 return droplet.copy_to(local_path, remote_path, chmod)
 
-            future = _EXECUTOR.submit(task)
+            future = THREAD_POOL.submit(task)
             futures[droplet] = future
         return futures
 
@@ -372,7 +371,7 @@ class DigitalOceanCluster:
             ) -> subprocess.CompletedProcess:
                 return droplet.copy_from(local_path, remote_path)
 
-            out[arg.droplet] = _EXECUTOR.submit(task)
+            out[arg.droplet] = THREAD_POOL.submit(task)
         return out
 
     @staticmethod

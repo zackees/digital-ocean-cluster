@@ -3,41 +3,22 @@ import os
 import subprocess
 import time
 import warnings
-from dataclasses import dataclass
+from concurrent.futures import Future
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
-from digital_ocean_cluster.machines import MACHINE_SIZES
+from digital_ocean_cluster.machines import ImageType, MachineSize, Region
+from digital_ocean_cluster.types import (
+    THREAD_POOL,
+    Authentication,
+    DropletException,
+    SSHKey,
+)
 
 _TIME_DELETE_BEFORE_GONE = 10
 SLEEP_TIME_BEFORE_SSH = 10
-
-
-@dataclass
-class Authentication:
-    droplet_limit: int
-    floating_ip_limit: int
-    reserved_ip_limit: int
-    volume_limit: int
-    email: str
-    name: str
-    uuid: str
-    email_verified: bool
-    status: str
-    team: dict[str, str]
-
-
-@dataclass
-class SSHKey:
-    id: int
-    name: str
-    fingerprint: str
-    public_key: str
-
-    def __str__(self) -> str:
-        return f"SSHKey: name={self.name},id={self.id},fingerprint={self.fingerprint}"
 
 
 WINDOWS_OPENSSH = "C:\\Windows\\System32\\OpenSSH\\ssh.exe"
@@ -72,8 +53,8 @@ class Droplet:
         except KeyError as e:
             json_str = json.dumps(self.data, indent=2)
             warnings.warn(f"No public IP found for droplet: \n{json_str}")
-            raise Exception("No public IP found.") from e
-        raise Exception("No public IP found.")
+            raise DropletException("No public IP found.") from e
+        raise DropletException("No public IP found.")
 
     def ssh_exec(self, command: str) -> subprocess.CompletedProcess:
         key_path = get_private_key()
@@ -169,7 +150,7 @@ class Droplet:
         results = self.ssh_exec(cmd)
         return results
 
-    def delete(self) -> Exception | None:
+    def delete(self) -> DropletException | None:
         try:
             print(f"Deleting droplet: {self.name}")
             # get_digital_ocean().compute.droplet.delete(str(self.id))
@@ -181,13 +162,17 @@ class Droplet:
                 env_paths = Path(os.environ["PATH"]).parts
                 warnings.warn(f"PATH: {env_paths}")
                 return None
-        except Exception as e:
+        except DropletException as e:
             warnings.warn(f"Error deleting droplet: {e}")
             return e
         time.sleep(_TIME_DELETE_BEFORE_GONE)
         if cp.returncode != 0:
-            return Exception(f"Error deleting droplet {self.name}: {cp.stderr}")
+            return DropletException(f"Error deleting droplet {self.name}: {cp.stderr}")
         return None
+
+    def async_delete(self) -> Future[DropletException | None]:
+
+        return THREAD_POOL.submit(self.delete)
 
     def is_valid(self) -> bool:
         tmp_list: list[Droplet] = DropletManager.list_droplets()
@@ -221,7 +206,7 @@ class DropletManager:
         )
         cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
         if cp.returncode != 0:
-            raise Exception(f"Error listing machines: {cp.stderr}")
+            raise DropletException(f"Error listing machines: {cp.stderr}")
         data = json.loads(cp.stdout)
         return [d["slug"] for d in data]
 
@@ -231,7 +216,7 @@ class DropletManager:
         cmd_str = "doctl compute droplet list --output json --interactive=false"
         cp_most = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
         if cp_most.returncode != 0:
-            raise Exception(f"Error listing droplets: {cp_most.stderr}")
+            raise DropletException(f"Error listing droplets: {cp_most.stderr}")
         data_main = json.loads(cp_most.stdout)
         out = [Droplet(data) for data in data_main]
         return out
@@ -242,7 +227,7 @@ class DropletManager:
         cmd_str = "doctl compute ssh-key list --interactive=false --output json"
         cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
         if cp.returncode != 0:
-            raise Exception(f"Error listing SSH keys: {cp.stderr}")
+            raise DropletException(f"Error listing SSH keys: {cp.stderr}")
         # return json.loads(cp.stdout)
         tmp_list = json.loads(cp.stdout)
         out = [SSHKey(**data) for data in tmp_list]
@@ -253,38 +238,34 @@ class DropletManager:
         name: str,
         ssh_key: SSHKey | None = None,
         tags: list[str] | None = None,
-        size: str | None = None,
-        image="ubuntu-24-10-x64",
-        region="nyc1",
+        size: MachineSize = MachineSize.S_2VCPU_2GB,
+        image: ImageType = ImageType.UBUNTU_24_10_X64,
+        region=Region.NYC_1,
         check=True,
-    ) -> Droplet | Exception:
+    ) -> Droplet | DropletException:
         ensure_doctl()
-        size = size or "s-2vcpu-2gb"
-        assert (
-            size in MACHINE_SIZES
-        ), f"Invalid size: {size}, choices are {MACHINE_SIZES}"
         if tags:
             for tag in tags:
                 if " " in tag:
-                    return Exception(f"Tag cannot contain spaces: {tag}")
+                    return DropletException(f"Tag cannot contain spaces: {tag}")
         if check:
             if DropletManager.find_droplets(name):
-                return Exception(f"Droplet already exists: {name}")
+                return DropletException(f"Droplet already exists: {name}")
         if ssh_key is None:
             keys = DropletManager.list_ssh_keys()
             if not keys:
-                return Exception("No SSH keys found.")
+                return DropletException("No SSH keys found.")
             ssh_key = keys[0]
         if not ssh_key:
-            return Exception("No SSH key found.")
-        args = [
+            return DropletException("No SSH key found.")
+        args: list[str] = [
             name,
             "--image",
-            image,
+            image.value,
             "--size",
-            size,
+            size.value,
             "--region",
-            region,
+            region.value,
             "--wait",
         ]
         if tags is not None:
@@ -302,7 +283,8 @@ class DropletManager:
             shell=True,
         )
         if cp.returncode != 0:
-            return Exception(f"Error creating droplet: {cp.stderr}", cp)
+            msg = f"Error creating droplet:\nReturn Value: {cp.returncode}\n\nstderr:\n{cp.stderr}\n\nstdout:\n{cp.stdout}"
+            return DropletException(msg)
         print("Created droplet:", name)
         time.sleep(SLEEP_TIME_BEFORE_SSH)
         timeout = time.time() + 20
@@ -316,7 +298,7 @@ class DropletManager:
         else:
             all_droplets = DropletManager.list_droplets()
             print(f"Error creating droplet: {name}, available droplets: {all_droplets}")
-            return Exception(
+            return DropletException(
                 f"Error creating droplet: {name}, available droplets: {all_droplets}"
             )
         stdout_cloudinit = droplet.ssh_exec("sudo cloud-init status --wait")
@@ -328,7 +310,7 @@ class DropletManager:
                 return droplet
             time.sleep(1)
         else:
-            return Exception(
+            return DropletException(
                 f"Cloud Init failed to complete: {stdout_cloudinit}, pwd: {stdout_pwd}"
             )
 

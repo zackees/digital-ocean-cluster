@@ -1,5 +1,34 @@
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from inspect import currentframe
 from types import FrameType
+
+THREAD_POOL = ThreadPoolExecutor(max_workers=64)
+
+
+@dataclass
+class Authentication:
+    droplet_limit: int
+    floating_ip_limit: int
+    reserved_ip_limit: int
+    volume_limit: int
+    email: str
+    name: str
+    uuid: str
+    email_verified: bool
+    status: str
+    team: dict[str, str]
+
+
+@dataclass
+class SSHKey:
+    id: int
+    name: str
+    fingerprint: str
+    public_key: str
+
+    def __str__(self) -> str:
+        return f"SSHKey: name={self.name},id={self.id},fingerprint={self.fingerprint}"
 
 
 def _inspect_frame(frame: FrameType | None) -> tuple[str, int]:
@@ -12,7 +41,7 @@ def _inspect_frame(frame: FrameType | None) -> tuple[str, int]:
         else:
             line = 0
             file = "<unknown>"
-        frame.clear()  # Clear the frame reference to prevent reference cycles
+        # frame.clear()  # Clear the frame reference to prevent reference cycles
     else:
         line = 0
         file = "<unknown>"

@@ -6,11 +6,14 @@ import os
 import unittest
 from pathlib import Path
 
-from digital_ocean_cluster import DropletManager
+from digital_ocean_cluster import DigitalOceanCluster, DropletManager
+from digital_ocean_cluster.types import DropletException
 
 # os.environ["home"] = "/home/niteris"
 
 IS_GITHUB = os.environ.get("GITHUB_ACTIONS", False)
+
+TAGS = ["test", "cluster"]
 
 
 def get_pub_key_path() -> str:
@@ -26,21 +29,18 @@ class DropletCreationCycleTester(unittest.TestCase):
     @unittest.skipIf(IS_GITHUB, "Skipping test for GitHub Actions")
     def test_create_droplets(self) -> None:
         """Test command line interface (CLI)."""
-        all_droplets = DropletManager.list_droplets()
-        print(f"All Droplets: {all_droplets}")
+        DigitalOceanCluster.delete_cluster(TAGS)
         droplets = DropletManager.find_droplets("test-droplet-creation")
-        for d in droplets:
-            print(f"Deleting droplet: {d.name}")
-            d.delete()
+        self.assertEqual(len(droplets), 0)
         ssh_keys = DropletManager.list_ssh_keys()
         print(f"SSH Keys: {ssh_keys}")
         self.assertTrue(
             len(ssh_keys) > 0, "You MUST have at least one SSH key to run this test."
         )
         droplet = DropletManager.create_droplet(
-            name="test-droplet-creation", ssh_key=ssh_keys[0], tags=["test"]
+            name="test-droplet-creation", ssh_key=ssh_keys[0], tags=TAGS
         )
-        assert not isinstance(droplet, Exception)
+        assert not isinstance(droplet, DropletException)
         print(f"Droplet: {droplet}")
         self.assertTrue(droplet.is_valid())
         self.assertIsNotNone(droplet)

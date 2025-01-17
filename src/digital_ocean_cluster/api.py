@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
+from digital_ocean_cluster.locked_print import locked_print
 from digital_ocean_cluster.machines import ImageType, MachineSize, Region
 from digital_ocean_cluster.types import (
     THREAD_POOL,
@@ -73,7 +74,7 @@ class Droplet:
             command,
         ]
         cmd_str = subprocess.list2cmdline(cmd_list)
-        print(f"Executing: {cmd_str}")
+        locked_print(f"Executing: {cmd_str}")
         # cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
         # DO NOT MOVE THESE TO USE TEXT - THE PROGRAM WILL CRASH IN WINDOWS
         proc: subprocess.Popen = subprocess.Popen(
@@ -104,7 +105,7 @@ class Droplet:
 
         # make sure the destination directory exists
         self.ssh_exec(f"mkdir -p {dest.parent.as_posix()}")
-        print(f"Executing: {cmd_str}")
+        locked_print(f"Executing: {cmd_str}")
         cp = subprocess.run(cmd_list, capture_output=True, text=True)
         # assert cp.returncode == 0, f"Error copying file: {cp.stderr}"
         if cp.returncode != 0:
@@ -128,7 +129,7 @@ class Droplet:
             str(local_path),
         ]
         cmd_str = subprocess.list2cmdline(cmd_list)
-        print(f"Executing: {cmd_str}")
+        locked_print(f"Executing: {cmd_str}")
         cp = subprocess.run(cmd_list, capture_output=True, text=True)
         # assert cp.returncode == 0, f"Error copying file: {cp.stderr}"
         if cp.returncode != 0:
@@ -152,13 +153,13 @@ class Droplet:
 
     def delete(self) -> DropletException | None:
         try:
-            print(f"Deleting droplet: {self.name}")
+            locked_print(f"Deleting droplet: {self.name}")
             # get_digital_ocean().compute.droplet.delete(str(self.id))
             cmd_str = f"doctl compute droplet delete {self.id} --force --output json --interactive=false"
             cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
             if cp.returncode != 0:
                 warnings.warn(f"Error deleting droplet: {cp.stderr}")
-                # print path to doctl
+                # locked_print path to doctl
                 env_paths = Path(os.environ["PATH"]).parts
                 warnings.warn(f"PATH: {env_paths}")
                 return None
@@ -275,7 +276,7 @@ class DropletManager:
         args += ["--ssh-keys", ssh_key.fingerprint]
         cmd_list = ["doctl", "compute", "droplet", "create"] + args
         cmd_str = subprocess.list2cmdline(cmd_list)
-        print(f"Running: {cmd_str}")
+        locked_print(f"Running: {cmd_str}")
         cp = subprocess.run(
             cmd_str,
             capture_output=True,
@@ -285,7 +286,7 @@ class DropletManager:
         if cp.returncode != 0:
             msg = f"Error creating droplet:\nReturn Value: {cp.returncode}\n\nstderr:\n{cp.stderr}\n\nstdout:\n{cp.stdout}"
             return DropletException(msg)
-        print("Created droplet:", name)
+        locked_print("Created droplet:", name)
         time.sleep(SLEEP_TIME_BEFORE_SSH)
         timeout = time.time() + 20
         droplet: Droplet
@@ -297,7 +298,9 @@ class DropletManager:
             time.sleep(1)
         else:
             all_droplets = DropletManager.list_droplets()
-            print(f"Error creating droplet: {name}, available droplets: {all_droplets}")
+            locked_print(
+                f"Error creating droplet: {name}, available droplets: {all_droplets}"
+            )
             return DropletException(
                 f"Error creating droplet: {name}, available droplets: {all_droplets}"
             )

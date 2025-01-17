@@ -91,27 +91,40 @@ class Droplet:
     ) -> subprocess.CompletedProcess:
         assert src.exists(), f"Source file does not exist: {src}"
         key_path = get_private_key()
-        # rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa" C:/Users/niteris/dev/mikeadams/mike-adams-tx/dist/mike_tx-1.0.5-py3-none-any.whl root@159.223.178.81:/root/dist/
+
         cmd_list = [
             "scp",
             "-o",
             "StrictHostKeyChecking=no",
             "-i",
             key_path,
-            str(src),
-            f"root@{self.public_ip()}:{dest.as_posix()}",
         ]
+
+        # Add recursive flag if source is a directory
+        if src.is_dir():
+            cmd_list.append("-r")
+
+        cmd_list.extend(
+            [
+                str(src),
+                f"root@{self.public_ip()}:{dest.as_posix()}",
+            ]
+        )
         cmd_str = subprocess.list2cmdline(cmd_list)
 
         # make sure the destination directory exists
         self.ssh_exec(f"mkdir -p {dest.parent.as_posix()}")
         locked_print(f"Executing: {cmd_str}")
         cp = subprocess.run(cmd_list, capture_output=True, text=True)
-        # assert cp.returncode == 0, f"Error copying file: {cp.stderr}"
         if cp.returncode != 0:
             warnings.warn(f"Error copying file: {cp.stderr}")
         if chmod:
-            self.ssh_exec(f"chmod {chmod} {dest.as_posix()}")
+            chmod_path = dest.as_posix()
+            if src.is_dir():
+                # Apply chmod recursively for directories
+                self.ssh_exec(f"chmod -R {chmod} {chmod_path}")
+            else:
+                self.ssh_exec(f"chmod {chmod} {chmod_path}")
         return cp
 
     def copy_from(

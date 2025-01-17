@@ -23,6 +23,7 @@ SLEEP_TIME_BEFORE_SSH = 10
 
 
 WINDOWS_OPENSSH = "C:\\Windows\\System32\\OpenSSH\\ssh.exe"
+KNOWN_HOSTS_NULL = "NUL" if os.name == "nt" else "/dev/null"
 
 
 def get_private_key() -> str:
@@ -67,6 +68,8 @@ class Droplet:
             "-o",
             "BatchMode=yes",
             "-o",
+            f"UserKnownHostsFile={KNOWN_HOSTS_NULL}",
+            "-o",
             "StrictHostKeyChecking=no",
             "-i",
             key_path,
@@ -94,6 +97,8 @@ class Droplet:
 
         cmd_list = [
             "scp",
+            "-o",
+            f"UserKnownHostsFile={KNOWN_HOSTS_NULL}",
             "-o",
             "StrictHostKeyChecking=no",
             "-i",
@@ -134,6 +139,8 @@ class Droplet:
 
         cmd_list = [
             "scp",
+            "-o",
+            f"UserKnownHostsFile={KNOWN_HOSTS_NULL}",
             "-o",
             "StrictHostKeyChecking=no",
             "-i",

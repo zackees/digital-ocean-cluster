@@ -71,6 +71,10 @@ class DropletCluster:
     def __bool__(self) -> bool:
         return len(self.droplets) > 0
 
+    # length
+    def __len__(self) -> int:
+        return len(self.droplets)
+
     def run_cmd(self, cmd: str) -> dict[Droplet, subprocess.CompletedProcess]:
         return DigitalOceanCluster.run_cluster_cmd(self.droplets, cmd)
 

@@ -23,7 +23,6 @@ SLEEP_TIME_BEFORE_SSH = 10
 
 
 WINDOWS_OPENSSH = "C:\\Windows\\System32\\OpenSSH\\ssh.exe"
-KNOWN_HOSTS_NULL = "NUL" if os.name == "nt" else "/dev/null"
 
 
 def get_private_key() -> str:
@@ -61,33 +60,35 @@ class Droplet:
     def ssh_exec(self, command: str) -> subprocess.CompletedProcess:
         key_path = get_private_key()
         public_ip = self.public_ip()
-        cmd_list = [
-            WINDOWS_OPENSSH,
-            # "-t", # force pseudo-terminal allocation
-            "-n",  # prevents reading from stdin
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            f"UserKnownHostsFile={KNOWN_HOSTS_NULL}",
-            "-o",
-            "StrictHostKeyChecking=no",
-            "-i",
-            key_path,
-            f"root@{public_ip}",
-            command,
-        ]
-        cmd_str = subprocess.list2cmdline(cmd_list)
-        locked_print(f"Executing: {cmd_str}")
-        # cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
-        # DO NOT MOVE THESE TO USE TEXT - THE PROGRAM WILL CRASH IN WINDOWS
-        proc: subprocess.Popen = subprocess.Popen(
-            cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        stdout, stderr = proc.communicate(input="\n")
-        cp: subprocess.CompletedProcess = subprocess.CompletedProcess(
-            cmd_list, proc.returncode, stdout.decode(), stderr.decode()
-        )
-        return cp
+
+        with TemporaryDirectory() as tmpdir:
+            known_hosts = Path(tmpdir) / "known_hosts"
+            known_hosts.touch()  # Create empty known_hosts file
+
+            cmd_list = [
+                WINDOWS_OPENSSH,
+                "-n",  # prevents reading from stdin
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                f"UserKnownHostsFile={known_hosts}",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-i",
+                key_path,
+                f"root@{public_ip}",
+                command,
+            ]
+            cmd_str = subprocess.list2cmdline(cmd_list)
+            locked_print(f"Executing: {cmd_str}")
+            proc: subprocess.Popen = subprocess.Popen(
+                cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            stdout, stderr = proc.communicate(input="\n")
+            cp: subprocess.CompletedProcess = subprocess.CompletedProcess(
+                cmd_list, proc.returncode, stdout.decode(), stderr.decode()
+            )
+            return cp
 
     def copy_to(
         self, src: Path, dest: Path, chmod: str | None = None
@@ -95,82 +96,92 @@ class Droplet:
         assert src.exists(), f"Source file does not exist: {src}"
         key_path = get_private_key()
 
-        cmd_list = [
-            "scp",
-            "-o",
-            f"UserKnownHostsFile={KNOWN_HOSTS_NULL}",
-            "-o",
-            "StrictHostKeyChecking=no",
-            "-i",
-            key_path,
-        ]
+        with TemporaryDirectory() as tmpdir:
+            known_hosts = Path(tmpdir) / "known_hosts"
+            known_hosts.touch()  # Create empty known_hosts file
 
-        # Add recursive flag if source is a directory
-        if src.is_dir():
-            cmd_list.append("-r")
-
-        cmd_list.extend(
-            [
-                str(src),
-                f"root@{self.public_ip()}:{dest.as_posix()}",
+            cmd_list = [
+                "scp",
+                "-o",
+                f"UserKnownHostsFile={known_hosts}",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-i",
+                key_path,
             ]
-        )
-        cmd_str = subprocess.list2cmdline(cmd_list)
 
-        # make sure the destination directory exists
-        self.ssh_exec(f"mkdir -p {dest.parent.as_posix()}")
-        locked_print(f"Executing: {cmd_str}")
-        cp = subprocess.run(cmd_list, capture_output=True, text=True)
-        if cp.returncode != 0:
-            warnings.warn(f"Error copying file: {cp.stderr}")
-        if chmod:
-            chmod_path = dest.as_posix()
+            # Add recursive flag if source is a directory
             if src.is_dir():
-                # Apply chmod recursively for directories
-                self.ssh_exec(f"chmod -R {chmod} {chmod_path}")
-            else:
-                self.ssh_exec(f"chmod {chmod} {chmod_path}")
-        return cp
+                cmd_list.append("-r")
+
+            cmd_list.extend(
+                [
+                    str(src),
+                    f"root@{self.public_ip()}:{dest.as_posix()}",
+                ]
+            )
+            cmd_str = subprocess.list2cmdline(cmd_list)
+
+            # make sure the destination directory exists
+            self.ssh_exec(f"mkdir -p {dest.parent.as_posix()}")
+            locked_print(f"Executing: {cmd_str}")
+            cp = subprocess.run(cmd_list, capture_output=True, text=True)
+            if cp.returncode != 0:
+                warnings.warn(f"Error copying file: {cp.stderr}")
+            if chmod:
+                chmod_path = dest.as_posix()
+                if src.is_dir():
+                    # Apply chmod recursively for directories
+                    self.ssh_exec(f"chmod -R {chmod} {chmod_path}")
+                else:
+                    self.ssh_exec(f"chmod {chmod} {chmod_path}")
+            return cp
 
     def copy_from(
         self, remote_path: Path, local_path: Path
     ) -> subprocess.CompletedProcess:
         key_path = get_private_key()
 
-        cmd_list = [
-            "scp",
-            "-o",
-            f"UserKnownHostsFile={KNOWN_HOSTS_NULL}",
-            "-o",
-            "StrictHostKeyChecking=no",
-            "-i",
-            key_path,
-        ]
+        with TemporaryDirectory() as tmpdir:
+            known_hosts = Path(tmpdir) / "known_hosts"
+            known_hosts.touch()  # Create empty known_hosts file
 
-        # Check if remote path is a directory
-        check_dir = self.ssh_exec(f"test -d {remote_path} && echo 'DIR' || echo 'FILE'")
-        is_dir = "DIR" in check_dir.stdout
-
-        # Add recursive flag if source is a directory
-        if is_dir:
-            cmd_list.append("-r")
-
-        # Make sure the local directory exists
-        local_path.parent.mkdir(parents=True, exist_ok=True)
-
-        cmd_list.extend(
-            [
-                f"root@{self.public_ip()}:{remote_path}",
-                str(local_path),
+            cmd_list = [
+                "scp",
+                "-o",
+                f"UserKnownHostsFile={known_hosts}",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-i",
+                key_path,
             ]
-        )
 
-        cmd_str = subprocess.list2cmdline(cmd_list)
-        locked_print(f"Executing: {cmd_str}")
-        cp = subprocess.run(cmd_list, capture_output=True, text=True)
-        if cp.returncode != 0:
-            warnings.warn(f"Error copying file: {cp.stderr}")
-        return cp
+            # Check if remote path is a directory
+            check_dir = self.ssh_exec(
+                f"test -d {remote_path} && echo 'DIR' || echo 'FILE'"
+            )
+            is_dir = "DIR" in check_dir.stdout
+
+            # Add recursive flag if source is a directory
+            if is_dir:
+                cmd_list.append("-r")
+
+            # Make sure the local directory exists
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+
+            cmd_list.extend(
+                [
+                    f"root@{self.public_ip()}:{remote_path}",
+                    str(local_path),
+                ]
+            )
+
+            cmd_str = subprocess.list2cmdline(cmd_list)
+            locked_print(f"Executing: {cmd_str}")
+            cp = subprocess.run(cmd_list, capture_output=True, text=True)
+            if cp.returncode != 0:
+                warnings.warn(f"Error copying file: {cp.stderr}")
+            return cp
 
     def copy_text_to(
         self, text: str, remote_path: Path, chmod: str | None = None

@@ -6,13 +6,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from digital_ocean_cluster import DropletManager
+from digital_ocean_cluster import DigitalOceanCluster, DropletManager
 
 HERE = Path(__file__).parent
 PROJECT_ROOT = HERE.parent
 assert (PROJECT_ROOT / "pyproject.toml").exists()
 
 TEST_FILE = PROJECT_ROOT / "pyproject.toml"
+
+_TAGS = ["test", "copy"]
 
 
 class DropletCopyTester(unittest.TestCase):
@@ -21,26 +23,11 @@ class DropletCopyTester(unittest.TestCase):
     # @unittest.skip("Skipping test")
     def test_ssh_exec_ls(self) -> None:
         """Test command line interface (CLI)."""
-        all_droplets = DropletManager.list_droplets()
-        print(f"All Droplets: {all_droplets}")
-        droplets = DropletManager.find_droplets("test-droplet-copy")
-        if not droplets:
-            # create
-            droplet = DropletManager.create_droplet(name="test-droplet-copy")
-            assert not isinstance(droplet, Exception)
-        else:
-            droplet = droplets[0]
+        # all_droplets = DropletManager.list_droplets()
+        DigitalOceanCluster.delete_cluster(tags=_TAGS)
+        droplet = DropletManager.create_droplet(name="test-droplet-ls", tags=_TAGS)
+        assert not isinstance(droplet, Exception)
         assert droplet is not None
-        stdout = droplet.copy_to(Path(TEST_FILE), Path("/root/pyproject.toml")).stdout
-        print("stdout:", stdout)
-
-        # ssh -i ~/.ssh/my-key root@165.227.209.16 'ls'
-        # ssh_cmd = f"ssh -o StrictHostKeyChecking=no -i {get_pub_key_path()} root@{public_ip} 'ls'"
-        # import subprocess
-        # subprocess.run(ssh_cmd, shell=True, env=env)
-        # droplet.ssh_exec("ls")
-        print()
-
         with tempfile.TemporaryDirectory() as tmpdir:
             # test uploading a folder
             tmpdir_path = Path(tmpdir)
@@ -49,6 +36,7 @@ class DropletCopyTester(unittest.TestCase):
             print("Uploaded files:")
             cp = droplet.ssh_exec("ls /root/folder")
             self.assertTrue("test.txt" in cp.stdout)
+        DigitalOceanCluster.delete_cluster(tags=_TAGS)
 
 
 if __name__ == "__main__":

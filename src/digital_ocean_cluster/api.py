@@ -131,20 +131,36 @@ class Droplet:
         self, remote_path: Path, local_path: Path
     ) -> subprocess.CompletedProcess:
         key_path = get_private_key()
-        # rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa" C:/Users/niteris/dev/mikeadams/mike-adams-tx/dist/mike_tx-1.0.5-py3-none-any.whl root@
+
         cmd_list = [
             "scp",
             "-o",
             "StrictHostKeyChecking=no",
             "-i",
             key_path,
-            f"root@{self.public_ip()}:{remote_path}",
-            str(local_path),
         ]
+
+        # Check if remote path is a directory
+        check_dir = self.ssh_exec(f"test -d {remote_path} && echo 'DIR' || echo 'FILE'")
+        is_dir = "DIR" in check_dir.stdout
+
+        # Add recursive flag if source is a directory
+        if is_dir:
+            cmd_list.append("-r")
+
+        # Make sure the local directory exists
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd_list.extend(
+            [
+                f"root@{self.public_ip()}:{remote_path}",
+                str(local_path),
+            ]
+        )
+
         cmd_str = subprocess.list2cmdline(cmd_list)
         locked_print(f"Executing: {cmd_str}")
         cp = subprocess.run(cmd_list, capture_output=True, text=True)
-        # assert cp.returncode == 0, f"Error copying file: {cp.stderr}"
         if cp.returncode != 0:
             warnings.warn(f"Error copying file: {cp.stderr}")
         return cp

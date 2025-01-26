@@ -202,8 +202,19 @@ class Droplet:
         try:
             locked_print(f"Deleting droplet: {self.name}")
             # get_digital_ocean().compute.droplet.delete(str(self.id))
-            cmd_str = f"doctl compute droplet delete {self.id} --force --output json --interactive=false"
-            cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
+            # cmd_str = f"doctl compute droplet delete {self.id} --force --output json --interactive=false"
+            cmd_list = [
+                "doctl",
+                "compute",
+                "droplet",
+                "delete",
+                str(self.id),
+                "--force",
+                "--output",
+                "json",
+                "--interactive=false",
+            ]
+            cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
             if cp.returncode != 0:
                 warnings.warn(f"Error deleting droplet: {cp.stderr}")
                 # locked_print path to doctl
@@ -237,9 +248,17 @@ class DropletManager:
 
     @staticmethod
     def is_authenticated() -> Authentication | None:
-        ensure_doctl()
-        cmd_str = "doctl account get --output=json --interactive=false"
-        cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
+        doctl = str(ensure_doctl())
+        # cmd_str = "doctl account get --output=json --interactive=false"
+        cmd_list: list[str] = [
+            doctl,
+            "account",
+            "get",
+            "--output=json",
+            "--interactive=false",
+        ]
+        # cmd_str = subprocess.list2cmdline(cmd_list)
+        cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
         if cp.returncode != 0:
             warnings.warn(f"Error checking authentication: {cp.stderr}")
             return None
@@ -248,11 +267,19 @@ class DropletManager:
 
     @staticmethod
     def list_machines() -> list[str]:
-        ensure_doctl()
-        cmd_str = (
-            "doctl compute image list-distribution --output json --interactive=false"
-        )
-        cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
+        doctl = str(ensure_doctl())
+        # cmd_str = (
+        #     "doctl compute image list-distribution --output json --interactive=false"
+        # )
+        cmd_list: list[str] = [
+            doctl,
+            "compute",
+            "image",
+            "list-distribution",
+            "--output=json",
+            "--interactive=false",
+        ]
+        cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
         if cp.returncode != 0:
             raise DropletException(f"Error listing machines: {cp.stderr}")
         data = json.loads(cp.stdout)
@@ -260,9 +287,19 @@ class DropletManager:
 
     @staticmethod
     def list_droplets() -> list[Droplet]:
-        ensure_doctl()
-        cmd_str = "doctl compute droplet list --output json --interactive=false"
-        cp_most = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
+        path = str(ensure_doctl())
+        # cmd_str = "doctl compute droplet list --output json --interactive=false"
+        cmd_list: list[str] = [
+            path,
+            "compute",
+            "droplet",
+            "list",
+            "--output=json",
+            "--interactive=false",
+        ]
+        cmd_str = subprocess.list2cmdline(cmd_list)
+        locked_print(f"Running: {cmd_str}")
+        cp_most = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
         if cp_most.returncode != 0:
             raise DropletException(f"Error listing droplets: {cp_most.stderr}")
         data_main = json.loads(cp_most.stdout)
@@ -271,9 +308,18 @@ class DropletManager:
 
     @staticmethod
     def list_ssh_keys() -> list[SSHKey]:
-        ensure_doctl()
-        cmd_str = "doctl compute ssh-key list --interactive=false --output json"
-        cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
+        doctl = str(ensure_doctl())
+        # cmd_str = "doctl compute ssh-key list --interactive=false --output json"
+        cmd_list: list[str] = [
+            doctl,
+            "compute",
+            "ssh-key",
+            "list",
+            "--interactive=false",
+            "--output=json",
+        ]
+        # cp = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
+        cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
         if cp.returncode != 0:
             raise DropletException(f"Error listing SSH keys: {cp.stderr}")
         # return json.loads(cp.stdout)
@@ -291,7 +337,7 @@ class DropletManager:
         region=Region.NYC_1,
         check=True,
     ) -> Droplet | DropletException:
-        ensure_doctl()
+        doctl = str(ensure_doctl())
         if tags:
             for tag in tags:
                 if " " in tag:
@@ -321,7 +367,7 @@ class DropletManager:
             args += [f"--tag-names={tag_names_joined}"]
             # args += ["--tag-names", ",".join(tags)]
         args += ["--ssh-keys", ssh_key.fingerprint]
-        cmd_list = ["doctl", "compute", "droplet", "create"] + args
+        cmd_list = [doctl, "compute", "droplet", "create"] + args
         cmd_str = subprocess.list2cmdline(cmd_list)
         locked_print(f"Running: {cmd_str}")
         cp = subprocess.run(

@@ -13,8 +13,8 @@ classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
     "download",
     "appdirs",
-    "wheel"
-
+    "wheel",
+    "python-dotenv"
 ]
 # Change this with the version number bump.
 version = "1.1.11"

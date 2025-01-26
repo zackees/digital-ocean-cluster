@@ -143,3 +143,4 @@ uv.lock
 .aider*
 !.aider.conf.yml
 !.aiderignore
+.env

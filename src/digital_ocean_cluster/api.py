@@ -46,16 +46,24 @@ class Droplet:
         return []
 
     def public_ip(self) -> str:
-        try:
-            addr_infos = self.data["networks"]["v4"]
-            for addr_info in addr_infos:
-                if addr_info["type"] == "public":
-                    return addr_info["ip_address"]
-        except KeyError as e:
-            json_str = json.dumps(self.data, indent=2)
-            warnings.warn(f"No public IP found for droplet: \n{json_str}")
-            raise DropletException("No public IP found.") from e
-        raise DropletException("No public IP found.")
+        doctl = str(ensure_doctl())
+        cmd_list = [
+            doctl,
+            "compute",
+            "droplet",
+            "get",
+            str(self.id),
+            "--format",
+            "PublicIPv4",
+            "--no-header",
+        ]
+        cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
+        if cp.returncode != 0:
+            raise DropletException(f"Error getting public IP: {cp.stderr}")
+        ip = cp.stdout.strip()
+        if not ip:
+            raise DropletException("No public IP found.")
+        return ip
 
     def ssh_exec(self, command: str) -> subprocess.CompletedProcess:
         key_path = get_private_key()
@@ -203,8 +211,9 @@ class Droplet:
             locked_print(f"Deleting droplet: {self.name}")
             # get_digital_ocean().compute.droplet.delete(str(self.id))
             # cmd_str = f"doctl compute droplet delete {self.id} --force --output json --interactive=false"
+            doctl = str(ensure_doctl())
             cmd_list = [
-                "doctl",
+                doctl,
                 "compute",
                 "droplet",
                 "delete",

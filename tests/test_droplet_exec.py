@@ -42,6 +42,7 @@ class DropletExecTester(unittest.TestCase):
         droplet: Droplet | Exception = DropletManager.create_droplet(
             name="test-droplet-ssh", ssh_key=ssh_key, tags=TAGS
         )
+        self.assertIsInstance(droplet, Droplet, f"Error: {droplet}")
         assert not isinstance(droplet, Exception)
         # Assuming we take the first droplet for testing
         public_ip = droplet.public_ip()

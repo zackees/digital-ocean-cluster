@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable
 
-from digital_ocean_cluster.api import Droplet, DropletManager
+from digital_ocean_cluster.droplet_manager import Droplet, DropletManager
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
 from digital_ocean_cluster.machines import ImageType, MachineSize, Region
 from digital_ocean_cluster.types import THREAD_POOL, DropletException

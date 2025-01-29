@@ -1,4 +1,3 @@
-from .api import Authentication, Droplet, DropletManager, SSHKey
 from .cluster import (
     DigitalOceanCluster,
     DropletCluster,
@@ -6,8 +5,9 @@ from .cluster import (
     DropletCopyArgs,
     DropletCreationArgs,
 )
+from .droplet_manager import Authentication, Droplet, DropletManager
 from .machines import ImageType, MachineSize, Region
-from .types import DropletException
+from .types import DropletException, SSHKey
 
 __all__ = [
     "Authentication",

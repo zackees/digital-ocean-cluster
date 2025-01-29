@@ -8,6 +8,7 @@ class ImageType(Enum):
 
 class Region(Enum):
     NYC_1 = "nyc1"
+    AMSTERDAM_3 = "ams3"
 
 
 class MachineSize(Enum):

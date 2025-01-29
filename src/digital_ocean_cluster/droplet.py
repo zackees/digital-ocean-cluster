@@ -52,13 +52,21 @@ class Droplet:
             "PublicIPv4",
             "--no-header",
         ]
-        cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
-        if cp.returncode != 0:
-            raise DropletException(f"Error getting public IP: {cp.stderr}")
-        ip = cp.stdout.strip()
-        if not ip:
-            raise DropletException("No public IP found.")
-        return ip
+        for _ in range(10):
+            try:
+                cp = subprocess.run(
+                    cmd_list, capture_output=True, text=True, shell=False
+                )
+                if cp.returncode != 0:
+                    raise DropletException(f"Error getting public IP: {cp.stderr}")
+                ip = cp.stdout.strip()
+                if not ip:
+                    raise DropletException("No public IP found.")
+                return ip
+            except DropletException as e:
+                locked_print(f"Error getting public IP: {e}, waiting")
+                time.sleep(1)
+        raise DropletException(f"Failed to get public IP for droplet: {self.name}")
 
     def ssh_exec(self, command: str) -> subprocess.CompletedProcess:
         key_path = get_private_key()

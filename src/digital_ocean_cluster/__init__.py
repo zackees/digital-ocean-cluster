@@ -17,7 +17,6 @@ __all__ = [
     "MachineSize",
     "Droplet",
     "DropletManager",
-    "Cluster",
     "DropletCreationArgs",
     "DropletCmdArgs",
     "DropletCopyArgs",

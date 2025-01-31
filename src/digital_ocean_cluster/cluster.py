@@ -10,14 +10,14 @@ from typing import Any, Callable
 from digital_ocean_cluster.droplet_manager import Droplet, DropletManager
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
 from digital_ocean_cluster.machines import ImageType, MachineSize, Region
-from digital_ocean_cluster.types import THREAD_POOL, DropletException
+from digital_ocean_cluster.types import THREAD_POOL, DropletException, SSHKey
 
 
 @dataclass
 class DropletCreationArgs:
     name: str
     tags: list[str]
-    ssh_key: str | None = None
+    ssh_key: SSHKey | None = None
     size: MachineSize = MachineSize.S_2VCPU_2GB
     image: ImageType = ImageType.UBUNTU_24_10_X64
     region: Region = Region.NYC_1

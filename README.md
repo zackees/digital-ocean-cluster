@@ -90,7 +90,7 @@ class DigitalOceanClusterTester(unittest.TestCase):
 
         # now run ls on all of them
         cmd = "pwd"
-        result: dict[Droplet, subprocess.CompletedProcess] = cluster.run_cmd(cmd)
+        result: dict[Droplet, CompletedProcess] = cluster.run_cmd(cmd)
         for _, cp in result.items():
             self.assertIn(
                 "/root",

@@ -1,4 +1,3 @@
-import subprocess
 import time
 import warnings
 from concurrent.futures import Future
@@ -10,7 +9,12 @@ from typing import Any, Callable
 from digital_ocean_cluster.droplet_manager import Droplet, DropletManager
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
 from digital_ocean_cluster.machines import ImageType, MachineSize, Region
-from digital_ocean_cluster.types import THREAD_POOL, DropletException, SSHKey
+from digital_ocean_cluster.types import (
+    THREAD_POOL,
+    CompletedProcess,
+    DropletException,
+    SSHKey,
+)
 
 
 @dataclass
@@ -75,7 +79,7 @@ class DropletCluster:
     def __len__(self) -> int:
         return len(self.droplets)
 
-    def run_cmd(self, cmd: str) -> dict[Droplet, subprocess.CompletedProcess]:
+    def run_cmd(self, cmd: str) -> dict[Droplet, CompletedProcess]:
         return DigitalOceanCluster.run_cluster_cmd(self.droplets, cmd)
 
     def run_function(self, function: Callable[[Droplet], Any]) -> dict[Droplet, Any]:
@@ -83,14 +87,14 @@ class DropletCluster:
 
     def copy_to(
         self, local_path: Path, remote_path: Path, chmod: str | None = None
-    ) -> dict[Droplet, subprocess.CompletedProcess]:
+    ) -> dict[Droplet, CompletedProcess]:
         return DigitalOceanCluster.run_cluster_copy_to(
             self.droplets, local_path, remote_path, chmod=chmod
         )
 
     def copy_from(
         self, local_path: Path, remote_path: Path
-    ) -> dict[Droplet, subprocess.CompletedProcess]:
+    ) -> dict[Droplet, CompletedProcess]:
         ensure_doctl()
         args = [
             DropletCopyArgs(
@@ -102,7 +106,7 @@ class DropletCluster:
 
     def copy_text_to(
         self, text: str, remote_path: Path
-    ) -> dict[Droplet, subprocess.CompletedProcess]:
+    ) -> dict[Droplet, CompletedProcess]:
         ensure_doctl()
         with TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir) / "tmp.txt"
@@ -252,16 +256,14 @@ class DigitalOceanCluster:
     @staticmethod
     def async_run_cluster_cmd(
         droplets: list[Droplet], cmd: str
-    ) -> dict[Droplet, Future[subprocess.CompletedProcess]]:
+    ) -> dict[Droplet, Future[CompletedProcess]]:
         ensure_doctl()
-        # futures: list[Future[subprocess.CompletedProcess]] = []
+        # futures: list[Future[CompletedProcess]] = []
         droplet: Droplet
-        out: dict[Droplet, Future[subprocess.CompletedProcess]] = {}
+        out: dict[Droplet, Future[CompletedProcess]] = {}
         for droplet in droplets:
 
-            def task(
-                droplet: Droplet = droplet, cmd: str = cmd
-            ) -> subprocess.CompletedProcess:
+            def task(droplet: Droplet = droplet, cmd: str = cmd) -> CompletedProcess:
                 return droplet.ssh_exec(cmd)
 
             future = THREAD_POOL.submit(task)
@@ -271,12 +273,12 @@ class DigitalOceanCluster:
     @staticmethod
     def run_cluster_cmd(
         droplets: list[Droplet], cmd: str
-    ) -> dict[Droplet, subprocess.CompletedProcess]:
+    ) -> dict[Droplet, CompletedProcess]:
         ensure_doctl()
-        futures: dict[Droplet, Future[subprocess.CompletedProcess]] = (
+        futures: dict[Droplet, Future[CompletedProcess]] = (
             DigitalOceanCluster.async_run_cluster_cmd(droplets, cmd)
         )
-        out: dict[Droplet, subprocess.CompletedProcess] = {}
+        out: dict[Droplet, CompletedProcess] = {}
         for droplet, future in futures.items():
             out[droplet] = future.result()
         return out
@@ -323,9 +325,9 @@ class DigitalOceanCluster:
         local_path: Path,
         remote_path: Path,
         chmod: str | None = None,
-    ) -> dict[Droplet, Future[subprocess.CompletedProcess]]:
+    ) -> dict[Droplet, Future[CompletedProcess]]:
         ensure_doctl()
-        futures: dict[Droplet, Future[subprocess.CompletedProcess]] = {}
+        futures: dict[Droplet, Future[CompletedProcess]] = {}
         droplet: Droplet
         for droplet in droplets:
 
@@ -334,7 +336,7 @@ class DigitalOceanCluster:
                 local_path: Path = local_path,
                 remote_path: Path = remote_path,
                 chmod: str | None = chmod,
-            ) -> subprocess.CompletedProcess:
+            ) -> CompletedProcess:
                 return droplet.copy_to(local_path, remote_path, chmod)
 
             future = THREAD_POOL.submit(task)
@@ -347,14 +349,14 @@ class DigitalOceanCluster:
         local_path: Path,
         remote_path: Path,
         chmod: str | None = None,
-    ) -> dict[Droplet, subprocess.CompletedProcess]:
+    ) -> dict[Droplet, CompletedProcess]:
         ensure_doctl()
-        futures: dict[Droplet, Future[subprocess.CompletedProcess]] = (
+        futures: dict[Droplet, Future[CompletedProcess]] = (
             DigitalOceanCluster.async_run_cluster_copy_to(
                 droplets, local_path, remote_path, chmod=chmod
             )
         )
-        out: dict[Droplet, subprocess.CompletedProcess] = {}
+        out: dict[Droplet, CompletedProcess] = {}
         for droplet, future in futures.items():
             out[droplet] = future.result()
         return out
@@ -362,9 +364,9 @@ class DigitalOceanCluster:
     @staticmethod
     def async_run_cluster_copy_from(
         args: list[DropletCopyArgs],
-    ) -> dict[Droplet, Future[subprocess.CompletedProcess]]:
+    ) -> dict[Droplet, Future[CompletedProcess]]:
         ensure_doctl()
-        out: dict[Droplet, Future[subprocess.CompletedProcess]] = {}
+        out: dict[Droplet, Future[CompletedProcess]] = {}
         arg: DropletCopyArgs
         for arg in args:
 
@@ -372,7 +374,7 @@ class DigitalOceanCluster:
                 droplet: Droplet = arg.droplet,
                 local_path: Path = arg.local_path,
                 remote_path: Path = arg.remote_path,
-            ) -> subprocess.CompletedProcess:
+            ) -> CompletedProcess:
                 return droplet.copy_from(local_path, remote_path)
 
             out[arg.droplet] = THREAD_POOL.submit(task)
@@ -381,12 +383,12 @@ class DigitalOceanCluster:
     @staticmethod
     def run_cluster_copy_from(
         args: list[DropletCopyArgs],
-    ) -> dict[Droplet, subprocess.CompletedProcess]:
+    ) -> dict[Droplet, CompletedProcess]:
         ensure_doctl()
-        futures: dict[Droplet, Future[subprocess.CompletedProcess]] = (
+        futures: dict[Droplet, Future[CompletedProcess]] = (
             DigitalOceanCluster.async_run_cluster_copy_from(args)
         )
-        out: dict[Droplet, subprocess.CompletedProcess] = {}
+        out: dict[Droplet, CompletedProcess] = {}
         for droplet, future in futures.items():
             out[droplet] = future.result()
         return out

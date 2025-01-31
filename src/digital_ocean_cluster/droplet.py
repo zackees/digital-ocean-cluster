@@ -9,10 +9,7 @@ from typing import Any
 
 from digital_ocean_cluster.ensure_doctl import ensure_doctl
 from digital_ocean_cluster.locked_print import locked_print
-from digital_ocean_cluster.types import (
-    THREAD_POOL,
-    DropletException,
-)
+from digital_ocean_cluster.types import THREAD_POOL, CompletedProcess, DropletException
 
 _TIME_DELETE_BEFORE_GONE = 10
 
@@ -68,7 +65,7 @@ class Droplet:
                 time.sleep(1)
         raise DropletException(f"Failed to get public IP for droplet: {self.name}")
 
-    def ssh_exec(self, command: str) -> subprocess.CompletedProcess:
+    def ssh_exec(self, command: str) -> CompletedProcess:
         key_path = get_private_key()
         public_ip = self.public_ip()
 
@@ -99,11 +96,11 @@ class Droplet:
             cp: subprocess.CompletedProcess = subprocess.CompletedProcess(
                 cmd_list, proc.returncode, stdout.decode(), stderr.decode()
             )
-            return cp
+            return CompletedProcess(cmd_list, cp)
 
     def copy_to(
         self, src: Path, dest: Path, chmod: str | None = None
-    ) -> subprocess.CompletedProcess:
+    ) -> CompletedProcess:
         assert src.exists(), f"Source file does not exist: {src}"
         key_path = get_private_key()
 
@@ -146,11 +143,10 @@ class Droplet:
                     self.ssh_exec(f"chmod -R {chmod} {chmod_path}")
                 else:
                     self.ssh_exec(f"chmod {chmod} {chmod_path}")
-            return cp
+            out = CompletedProcess(cmd_list, cp)
+            return out
 
-    def copy_from(
-        self, remote_path: Path, local_path: Path
-    ) -> subprocess.CompletedProcess:
+    def copy_from(self, remote_path: Path, local_path: Path) -> CompletedProcess:
         key_path = get_private_key()
 
         with TemporaryDirectory() as tmpdir:
@@ -192,11 +188,11 @@ class Droplet:
             cp = subprocess.run(cmd_list, capture_output=True, text=True)
             if cp.returncode != 0:
                 warnings.warn(f"Error copying file: {cp.stderr}")
-            return cp
+            return CompletedProcess(cmd_list, cp)
 
     def copy_text_to(
         self, text: str, remote_path: Path, chmod: str | None = None
-    ) -> subprocess.CompletedProcess:
+    ) -> CompletedProcess:
         with TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir) / "tmp.txt"
             with open(tmp, "w", newline="\n") as f:
@@ -204,7 +200,7 @@ class Droplet:
             out = self.copy_to(tmp, remote_path, chmod)
             return out
 
-    def copy_text_from(self, remote_path: Path) -> subprocess.CompletedProcess:
+    def copy_text_from(self, remote_path: Path) -> CompletedProcess:
         cmd = "cat " + remote_path.as_posix()
         results = self.ssh_exec(cmd)
         return results

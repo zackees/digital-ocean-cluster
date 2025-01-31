@@ -1,3 +1,4 @@
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from inspect import currentframe
@@ -58,3 +59,53 @@ class DropletException(Exception):
 
     def __str__(self) -> str:
         return f"{self.message} in {self.file} at line {self.line}"
+
+
+@dataclass
+class CompletedProcess:
+    cmd_list: list[str]
+    subprocess: subprocess.CompletedProcess
+    ok: bool = True
+    cmd_str: str = ""
+
+    def __post_init__(self) -> None:
+        self.cmd_str = subprocess.list2cmdline(self.cmd_list)
+        self.ok = self.subprocess.returncode == 0
+
+    @property
+    def stdout(self) -> str:
+        out: str | bytes = self.subprocess.stdout
+        if isinstance(out, bytes):
+            return out.decode(encoding="utf-8")
+        return out
+
+    @property
+    def stderr(self) -> str:
+        err: str | bytes = self.subprocess.stderr
+        if isinstance(err, bytes):
+            return err.decode(encoding="utf-8")
+        return err
+
+    @property
+    def stdout_bytes(self) -> bytes:
+        out: str | bytes = self.subprocess.stdout
+        if isinstance(out, str):
+            return out.encode(encoding="utf-8")
+        return out
+
+    @property
+    def stderr_bytes(self) -> bytes:
+        err: str | bytes = self.subprocess.stderr
+        if isinstance(err, str):
+            return err.encode(encoding="utf-8")
+        return err
+
+    @property
+    def returncode(self) -> int:
+        return self.subprocess.returncode
+
+    def __str__(self) -> str:
+        return f"CompletedProcess(cmd={self.cmd_str}, returncode={self.returncode}, stdout={self.stdout}, stderr={self.stderr})"
+
+    def __repr__(self) -> str:
+        return str(self)

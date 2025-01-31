@@ -7,7 +7,7 @@ from .cluster import (
 )
 from .droplet_manager import Authentication, Droplet, DropletManager
 from .machines import ImageType, MachineSize, Region
-from .types import DropletException, SSHKey
+from .types import CompletedProcess, DropletException, SSHKey
 
 __all__ = [
     "Authentication",
@@ -23,4 +23,5 @@ __all__ = [
     "DropletCluster",
     "DigitalOceanCluster",
     "DropletException",
+    "CompletedProcess",
 ]

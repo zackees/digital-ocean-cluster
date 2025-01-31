@@ -3,7 +3,6 @@ Unit test file.
 """
 
 import os
-import subprocess
 import unittest
 from pathlib import Path
 
@@ -13,7 +12,7 @@ from digital_ocean_cluster import (
     DropletCluster,
     DropletCreationArgs,
 )
-from digital_ocean_cluster.types import DropletException
+from digital_ocean_cluster.types import CompletedProcess, DropletException
 
 # os.environ["home"] = "/home/niteris"
 
@@ -57,7 +56,7 @@ class DigitalOceanClusterTester(unittest.TestCase):
 
         # now run ls on all of them
         cmd = "pwd"
-        result: dict[Droplet, subprocess.CompletedProcess] = cluster.run_cmd(cmd)
+        result: dict[Droplet, CompletedProcess] = cluster.run_cmd(cmd)
         for _, cp in result.items():
             self.assertIn(
                 "/root",

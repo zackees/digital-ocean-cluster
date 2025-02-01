@@ -25,6 +25,8 @@ package-dir = {"" = "src"}
 [tool.ruff]
 line-length = 200
 
+
+
 [tool.pylint."MESSAGES CONTROL"]
 good-names = [
     "c",

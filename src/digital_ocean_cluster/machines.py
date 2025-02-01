@@ -12,6 +12,8 @@ class Region(Enum):
 
 
 class MachineSize(Enum):
+    """Anything with C_* is a CPU optimized machine with 10GbE network."""
+
     S_1VCPU_512MB_10GB = "s-1vcpu-512mb-10gb"
     S_1VCPU_1GB = "s-1vcpu-1gb"
     S_1VCPU_1GB_AMD = "s-1vcpu-1gb-amd"

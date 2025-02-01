@@ -73,3 +73,35 @@ class MachineSize(Enum):
     S_8VCPU_32GB_640GB_INTEL = "s-8vcpu-32gb-640gb-intel"
     M_4VCPU_32GB_INTEL = "m-4vcpu-32gb-intel"
     M3_4VCPU_32GB = "m3-4vcpu-32gb"
+
+    @staticmethod
+    def list_cpu_optimized() -> list["MachineSize"]:
+        all_sizes = list(MachineSize)
+        return [s for s in all_sizes if s.name.startswith("C")]
+
+    @staticmethod
+    def list_with_matching_memory(gb_memory: int) -> list["MachineSize"]:
+        all_sizes = list(MachineSize)
+        out: list["MachineSize"] = []
+        import re
+
+        pattern = re.compile(r"\d+GB")
+        for s in all_sizes:
+            match = pattern.search(s.name)
+            if match:
+                memory = int(match.group()[:-2])
+                if memory == gb_memory:
+                    out.append(s)
+        return out
+
+
+def unit_test() -> None:
+    cpu_optimized = MachineSize.list_cpu_optimized()
+    print(cpu_optimized)
+
+    gb_16 = MachineSize.list_with_matching_memory(16)
+    print(gb_16)
+
+
+if __name__ == "__main__":
+    unit_test()

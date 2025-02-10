@@ -139,6 +139,8 @@ class DropletManager:
             args += [f"--tag-names={tag_names_joined}"]
             # args += ["--tag-names", ",".join(tags)]
         args += ["--ssh-keys", ssh_key.fingerprint]
+        if enable_monitoring:
+            args += ["--enable-monitoring"]
         cmd_list = [doctl, "compute", "droplet", "create"] + args
         cmd_str = subprocess.list2cmdline(cmd_list)
         locked_print(f"Running: {cmd_str}")
@@ -169,20 +171,6 @@ class DropletManager:
             return DropletException(
                 f"Error creating droplet: {name}, available droplets: {all_droplets}"
             )
-
-        if enable_monitoring:
-            locked_print("Enabling monitoring")
-            cmd_list = [
-                doctl,
-                "compute",
-                "droplet",
-                "monitoring",
-                "enable",
-                name,
-            ]
-            cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
-            if cp.returncode != 0:
-                locked_print(f"Error enabling monitoring: {cp.stderr}")
 
         stdout_cloudinit = droplet.ssh_exec("sudo cloud-init status --wait")
         timeout = time.time() + 20

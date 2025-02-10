@@ -107,6 +107,7 @@ class DropletManager:
         image: ImageType = ImageType.UBUNTU_24_10_X64,
         region=Region.NYC_1,
         check=True,
+        enable_monitoring=True,
     ) -> Droplet | DropletException:
         doctl = str(ensure_doctl())
         if tags:
@@ -168,6 +169,21 @@ class DropletManager:
             return DropletException(
                 f"Error creating droplet: {name}, available droplets: {all_droplets}"
             )
+
+        if enable_monitoring:
+            locked_print("Enabling monitoring")
+            cmd_list = [
+                doctl,
+                "compute",
+                "droplet",
+                "monitoring",
+                "enable",
+                name,
+            ]
+            cp = subprocess.run(cmd_list, capture_output=True, text=True, shell=False)
+            if cp.returncode != 0:
+                locked_print(f"Error enabling monitoring: {cp.stderr}")
+
         stdout_cloudinit = droplet.ssh_exec("sudo cloud-init status --wait")
         timeout = time.time() + 20
         stdout_pwd = ""

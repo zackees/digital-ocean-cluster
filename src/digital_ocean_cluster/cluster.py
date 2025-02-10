@@ -27,6 +27,7 @@ class DropletCreationArgs:
     region: Region = Region.NYC_1
     # Use a function that throws if there is a failure to execute.
     install: Callable[[Droplet], Any] | None = None
+    enable_monitoring: bool = True
 
     def __post_init__(self) -> None:
         if "_" in self.name:
@@ -197,6 +198,7 @@ class DigitalOceanCluster:
             image = arg.image
             region = arg.region
             install = arg.install
+            enable_monitoring = arg.enable_monitoring
 
             def task(
                 name=name,
@@ -215,6 +217,7 @@ class DigitalOceanCluster:
                     image=image,
                     region=region,
                     check=False,
+                    enable_monitoring=enable_monitoring,
                 )
                 if isinstance(droplet, Exception):
                     return droplet
